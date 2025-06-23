@@ -1,310 +1,470 @@
-from pydantic_settings import BaseSettings
-from pydantic import Field, validator
-from typing import Optional, List, Union
+import logging
+from dataclasses import dataclass, field
+from typing import Optional, List, Dict, Any
 import os
 
+from forth_ai_underwriting.utils.environment import (
+    get_env_var, get_env_var_bool, get_env_var_int, get_env_var_float, get_env_var_list
+)
 
-class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+logger = logging.getLogger("forth_ai_underwriting.config")
+
+@dataclass(frozen=True)
+class DatabaseSettings:
+    """PostgreSQL database configuration with AWS Secrets Manager integration."""
+    name: str
+    user: str
+    password: str
+    host: str
+    port: int
+    sslmode: str = "disable"
+    pool_size: int = 20
+    max_overflow: int = 30
+    pool_timeout: int = 30
+    pool_recycle: int = 3600
     
-    # Application Configuration
-    app_name: str = "Forth AI Underwriting System"
-    app_version: str = "0.1.0"
-    app_host: str = Field(default="0.0.0.0", env="APP_HOST")
-    app_port: int = Field(default=8000, env="APP_PORT")
-    debug: bool = Field(default=False, env="DEBUG")
-    log_level: str = Field(default="INFO", env="LOG_LEVEL")
-    environment: str = Field(default="development", description="Environment (development, staging, production)")
+    @property
+    def url(self) -> str:
+        """
+        Assemble a PostgreSQL SQLAlchemy URL using asyncpg.
+        Example: postgresql+asyncpg://user:pass@host:5432/dbname?sslmode=disable
+        """
+        creds = f"{self.user}:{self.password}" if self.password else self.user
+        return (
+            f"postgresql+asyncpg://{creds}@{self.host}:{self.port}/{self.name}"
+            f"?sslmode={self.sslmode}"
+        )
+
+    @property
+    def engine_kwargs(self) -> dict:
+        """SQLAlchemy engine configuration for PostgreSQL."""
+        return {
+            "pool_size": self.pool_size,
+            "max_overflow": self.max_overflow,
+            "pool_timeout": self.pool_timeout,
+            "pool_recycle": self.pool_recycle,
+            "pool_pre_ping": True,
+            "echo_pool": False,
+        }
     
-    # Security Configuration
-    secret_key: str = Field(..., description="Secret key for encryption")
-    cors_origins: List[str] = Field(default=["*"], description="CORS allowed origins")
+    @classmethod
+    def from_environment(cls) -> "DatabaseSettings":
+        """Load database configuration from AWS Secrets Manager or environment variables."""
+        # Check if we should use AWS Secrets Manager
+        use_aws_secrets = get_env_var_bool("USE_AWS_SECRETS", False)
+        environment = get_env_var("ENVIRONMENT", "development")
+        
+        logger.info(f"=== DATABASE CONFIGURATION ===")
+        logger.info(f"ENVIRONMENT: {environment}")
+        logger.info(f"USE_AWS_SECRETS: {use_aws_secrets}")
+        
+        if use_aws_secrets:
+            try:
+                from forth_ai_underwriting.utils.secret_manager import get_database_credentials, get_aws_region
+                
+                # Get AWS configuration
+                region = get_aws_region()
+                secret_name = get_env_var("AWS_DB_SECRET_NAME")
+                
+                if not secret_name:
+                    raise ValueError("AWS_DB_SECRET_NAME is required when USE_AWS_SECRETS=true")
+                
+                logger.info(f"Loading database credentials from AWS Secrets Manager: {secret_name}")
+                db_creds = get_database_credentials(secret_name, region)
+                
+                return cls(
+                    name=db_creds["database"],
+                    user=db_creds["username"],
+                    password=db_creds["password"],
+                    host=db_creds["host"],
+                    port=int(db_creds["port"]),
+                    sslmode=db_creds.get("sslmode", "require"),
+                    pool_size=get_env_var_int("DB_POOL_SIZE", 20),
+                    max_overflow=get_env_var_int("DB_MAX_OVERFLOW", 30),
+                    pool_timeout=get_env_var_int("DB_POOL_TIMEOUT", 30),
+                    pool_recycle=get_env_var_int("DB_POOL_RECYCLE", 3600),
+                )
+                
+            except Exception as e:
+                logger.error(f"Failed to load database credentials from AWS Secrets Manager: {e}")
+                
+                if environment == "production":
+                    raise ValueError("Production environment requires AWS Secrets Manager for database configuration")
+                
+                logger.info("Falling back to environment variables for database configuration")
+        
+        # Fallback to environment variables (for development only)
+        db_name = get_env_var("DB_NAME")
+        db_user = get_env_var("DB_USER") 
+        db_password = get_env_var("DB_PASSWORD")
+        db_host = get_env_var("DB_HOST")
+        
+        # Provide development defaults if needed
+        if environment == "development":
+            db_name = db_name or "forth_underwriting_dev"
+            db_user = db_user or "postgres"
+            db_password = db_password or "postgres"
+            db_host = db_host or "localhost"
+        
+        if not all([db_name, db_user, db_password, db_host]):
+            missing = [name for name, val in [
+                ("DB_NAME", db_name), ("DB_USER", db_user), 
+                ("DB_PASSWORD", db_password), ("DB_HOST", db_host)
+            ] if not val]
+            raise ValueError(f"Missing required PostgreSQL environment variables: {missing}")
+        
+        return cls(
+            name=db_name,
+            user=db_user,
+            password=db_password,
+            host=db_host,
+            port=get_env_var_int("DB_PORT", 5432),
+            sslmode=get_env_var("DB_SSLMODE", "disable" if environment == "development" else "require"),
+            pool_size=get_env_var_int("DB_POOL_SIZE", 20),
+            max_overflow=get_env_var_int("DB_MAX_OVERFLOW", 30),
+            pool_timeout=get_env_var_int("DB_POOL_TIMEOUT", 30),
+            pool_recycle=get_env_var_int("DB_POOL_RECYCLE", 3600),
+        )
+
+@dataclass(frozen=True)
+class SecuritySettings:
+    """Security and authentication configuration."""
+    secret_key: str
+    cors_origins: List[str]
     cors_allow_credentials: bool = True
-    cors_allow_methods: List[str] = Field(default=["*"])
-    cors_allow_headers: List[str] = Field(default=["*"])
+    cors_allow_methods: List[str] = field(default_factory=lambda: ["GET", "POST", "PUT", "DELETE"])
+    cors_allow_headers: List[str] = field(default_factory=lambda: ["*"])
     
-    # Database Configuration
-    database_url: str = Field(default="sqlite:///./forth_underwriting.db", description="Database connection URL", validation_alias="DATABASE_URL")
-    database_pool_size: int = Field(default=20, description="Database connection pool size")
-    database_max_overflow: int = Field(default=30, description="Database max overflow connections")
-    database_pool_timeout: int = Field(default=30, description="Database pool timeout in seconds")
-    database_pool_recycle: int = Field(default=3600, description="Database pool recycle time in seconds")
+    @classmethod
+    def from_environment(cls) -> "SecuritySettings":
+        """Load security settings with production validation."""
+        secret_key = get_env_var("SECRET_KEY")
+        environment = get_env_var("ENVIRONMENT", "development")
+        
+        # Validate secret key
+        if not secret_key:
+            if environment == "production":
+                raise ValueError("SECRET_KEY is required in production")
+            secret_key = "dev_secret_key_at_least_32_characters_long_for_development_only"
+        
+        # Production secret key validation
+        weak_secrets = [
+            "your_secret_key_here", "change_me", "secret", "password",
+            "your_secret_key_here_change_in_production",
+            "your_secret_key_here_change_in_production_12345",
+            "dev_secret_key_at_least_32_characters_long_for_development_only"
+        ]
+        
+        if secret_key.lower() in [weak.lower() for weak in weak_secrets] and environment == "production":
+            raise ValueError("Secret key appears to be a default/placeholder value in production")
+        
+        if len(secret_key) < 32:
+            raise ValueError("Secret key must be at least 32 characters long")
+        
+        # CORS configuration
+        cors_origins_env = get_env_var("CORS_ORIGINS")
+        if cors_origins_env:
+            cors_origins = [origin.strip() for origin in cors_origins_env.split(",")]
+        else:
+            if environment == "production":
+                # Require explicit CORS origins in production
+                cors_origins = []
+            else:
+                cors_origins = ["http://localhost:3000", "http://localhost:8000"]
+        
+        # Production CORS validation
+        if environment == "production" and "*" in cors_origins:
+            raise ValueError("CORS origins cannot include '*' in production")
+        
+        return cls(
+            secret_key=secret_key,
+            cors_origins=cors_origins,
+            cors_allow_credentials=get_env_var_bool("CORS_ALLOW_CREDENTIALS", True),
+            cors_allow_methods=get_env_var_list("CORS_ALLOW_METHODS", cls.cors_allow_methods),
+            cors_allow_headers=get_env_var_list("CORS_ALLOW_HEADERS", cls.cors_allow_headers),
+        )
+
+@dataclass(frozen=True)
+class GeminiSettings:
+    """Google Gemini AI configuration."""
+    api_key: str
+    model_name: str = "gemini-pro"
+    temperature: float = 0.7
+    max_output_tokens: int = 1024
+    use_aws_secrets: bool = False
+    credentials_path: Optional[str] = None
     
-    # Redis Configuration (for caching and rate limiting)
-    redis_url: Optional[str] = Field(default=None, description="Redis connection URL")
-    redis_password: Optional[str] = Field(default=None, description="Redis password")
-    redis_db: int = Field(default=0, description="Redis database number")
-    redis_max_connections: int = Field(default=50, description="Redis max connections")
-    cache_ttl_seconds: int = Field(default=3600, description="Default cache TTL in seconds")
+    @classmethod
+    def from_environment(cls) -> "GeminiSettings":
+        """Load Gemini settings from environment or AWS Secrets Manager."""
+        use_aws_secrets = get_env_var_bool("USE_AWS_SECRETS", False)
+        secret_name = get_env_var("AWS_GEMINI_SECRET_NAME")
+        
+        credentials_path: Optional[str] = None
+        api_key: Optional[str] = None
+        
+        if use_aws_secrets and secret_name:
+            try:
+                from forth_ai_underwriting.utils.secret_manager import load_gemini_credentials, get_aws_region
+                
+                region = get_aws_region()
+                logger.info(f"Loading Gemini credentials from AWS Secrets Manager: {secret_name}")
+                credentials_path = load_gemini_credentials(secret_name, region)
+                
+                return cls(
+                    api_key="",  # Not needed when using service account
+                    model_name=get_env_var("GEMINI_MODEL_NAME", "gemini-2.0-flash-001"),
+                    temperature=get_env_var_float("GEMINI_TEMPERATURE", 0.0),
+                    max_output_tokens=get_env_var_int("GEMINI_MAX_OUTPUT_TOKENS", 1024),
+                    use_aws_secrets=True,
+                    credentials_path=credentials_path,
+                )
+                
+            except Exception as e:
+                logger.error(f"Failed to load Gemini credentials from AWS Secrets Manager: {e}")
+                logger.info("Falling back to environment variables for Gemini configuration")
+        
+        # Use environment variables
+        api_key = get_env_var("GEMINI_API_KEY", "")
+        
+        return cls(
+            api_key=api_key,
+            model_name=get_env_var("GEMINI_MODEL_NAME", "gemini-2.0-flash-001"),
+            temperature=get_env_var_float("GEMINI_TEMPERATURE", 0.0),
+            max_output_tokens=get_env_var_int("GEMINI_MAX_OUTPUT_TOKENS", 1024),
+            use_aws_secrets=False,
+            credentials_path=None,
+        )
+
+@dataclass(frozen=True)
+class ForthAPISettings:
+    """Forth API integration settings."""
+    base_url: str
+    api_key: str
+    timeout: int = 30
+    webhook_endpoint: str = "/webhook/forth"
+    webhook_secret: Optional[str] = None
     
-    # Celery Configuration (for background tasks)
-    celery_broker_url: Optional[str] = Field(default=None, description="Celery broker URL")
-    celery_result_backend: Optional[str] = Field(default=None, description="Celery result backend URL")
+    @classmethod
+    def from_environment(cls) -> "ForthAPISettings":
+        """Load Forth API settings from environment."""
+        return cls(
+            base_url=get_env_var("FORTH_API_BASE_URL", ""),
+            api_key=get_env_var("FORTH_API_KEY", ""),
+            timeout=get_env_var_int("FORTH_API_TIMEOUT", 30),
+            webhook_endpoint=get_env_var("WEBHOOK_ENDPOINT", "/webhook/forth"),
+            webhook_secret=get_env_var("FORTH_WEBHOOK_SECRET", None),
+        )
+
+@dataclass(frozen=True)
+class LLMSettings:
+    """LLM service configuration."""
+    provider: str = "gemini"
+    fallback_provider: Optional[str] = None
+    openai_api_key: Optional[str] = None
     
-    # Forth API Configuration
-    forth_api_base_url: str = Field(env="FORTH_API_BASE_URL")
-    forth_api_key: str = Field(env="FORTH_API_KEY")
-    forth_webhook_secret: Optional[str] = Field(default=None, env="FORTH_WEBHOOK_SECRET")
-    forth_api_timeout: int = Field(default=30, description="Forth API timeout in seconds")
-    forth_api_retries: int = Field(default=3, description="Forth API retry attempts")
+    @classmethod
+    def from_environment(cls) -> "LLMSettings":
+        """Load LLM settings from environment."""
+        return cls(
+            provider=get_env_var("LLM_PROVIDER", "gemini"),
+            fallback_provider=get_env_var("LLM_FALLBACK_PROVIDER", None),
+            openai_api_key=get_env_var("OPENAI_API_KEY", None),
+        )
+
+@dataclass(frozen=True)
+class DocumentProcessingSettings:
+    """Document processing configuration."""
+    max_file_size_mb: int = 50
+    max_chunk_size: int = 1000
+    enable_ai_parsing: bool = True
+    processing_timeout: int = 300
     
-    # AWS Configuration
-    use_aws_secrets: bool = Field(default=False, env="USE_AWS_SECRETS")
-    aws_region: str = Field(default="us-west-1", env="AWS_REGION")
-    aws_access_key_id: Optional[str] = Field(default=None, env="AWS_ACCESS_KEY_ID")
-    aws_secret_access_key: Optional[str] = Field(default=None, env="AWS_SECRET_ACCESS_KEY")
-    aws_db_secret_name: Optional[str] = Field(default=None, env="AWS_DB_SECRET_NAME")
-    aws_gemini_secret_name: Optional[str] = Field(default=None, env="AWS_GEMINI_SECRET_NAME")
+    @classmethod
+    def from_environment(cls) -> "DocumentProcessingSettings":
+        """Load document processing settings from environment."""
+        return cls(
+            max_file_size_mb=get_env_var_int("MAX_FILE_SIZE_MB", 50),
+            max_chunk_size=get_env_var_int("MAX_CHUNK_SIZE", 1000),
+            enable_ai_parsing=get_env_var_bool("ENABLE_AI_PARSING", True),
+            processing_timeout=get_env_var_int("DOCUMENT_PROCESSING_TIMEOUT", 300),
+        )
+
+@dataclass(frozen=True)
+class AWSSettings:
+    """AWS-specific configuration settings."""
+    use_secrets_manager: bool = False
+    region: str = "us-west-1"
+    db_secret_name: Optional[str] = None
+    gemini_secret_name: Optional[str] = None
     
-    # Google Cloud Configuration
-    google_cloud_location: str = Field(default="us-central1", env="GOOGLE_CLOUD_LOCATION")
-    google_cloud_project: str = Field(default="", env="GOOGLE_CLOUD_PROJECT")
+    @classmethod
+    def from_environment(cls) -> "AWSSettings":
+        """Load AWS settings from environment."""
+        return cls(
+            use_secrets_manager=get_env_var_bool("USE_AWS_SECRETS", False),
+            region=get_env_var("AWS_REGION", get_env_var("AWS_DEFAULT_REGION", "us-west-1")),
+            db_secret_name=get_env_var("AWS_DB_SECRET_NAME", None),
+            gemini_secret_name=get_env_var("AWS_GEMINI_SECRET_NAME", None),
+        )
+
+@dataclass(frozen=True)
+class CacheSettings:
+    """Cache and performance settings."""
+    enable_caching: bool = True
+    redis_url: Optional[str] = None
+    cache_ttl: int = 3600
     
-    # Gemini AI Configuration
-    gemini_model_name: str = Field(default="gemini-2.0-flash-001", env="GEMINI_MODEL_NAME")
-    gemini_temperature: float = Field(default=0.0, env="GEMINI_TEMPERATURE")
-    gemini_max_output_tokens: int = Field(default=1024, env="GEMINI_MAX_OUTPUT_TOKENS")
-    gemini_api_key: Optional[str] = Field(default=None, env="GOOGLE_API_KEY")
+    @classmethod
+    def from_environment(cls) -> "CacheSettings":
+        """Load cache settings from environment."""
+        return cls(
+            enable_caching=get_env_var_bool("ENABLE_CACHING", True),
+            redis_url=get_env_var("REDIS_URL", None),
+            cache_ttl=get_env_var_int("CACHE_TTL", 3600),
+        )
+
+@dataclass(frozen=True)
+class FeatureFlags:
+    """Feature toggle configuration."""
+    enable_audit_logging: bool = True
+    metrics_enabled: bool = True
+    rate_limit_enabled: bool = True
     
-    # OpenAI Configuration (fallback)
-    openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
-    openai_model: str = Field(default="gpt-4", description="OpenAI model to use")
-    openai_max_tokens: int = Field(default=4000, description="OpenAI max tokens")
-    openai_temperature: float = Field(default=0.1, description="OpenAI temperature")
-    openai_timeout: int = Field(default=60, description="OpenAI API timeout in seconds")
+    @classmethod
+    def from_environment(cls) -> "FeatureFlags":
+        """Load feature flags from environment."""
+        return cls(
+            enable_audit_logging=get_env_var_bool("ENABLE_AUDIT_LOGGING", True),
+            metrics_enabled=get_env_var_bool("METRICS_ENABLED", True),
+            rate_limit_enabled=get_env_var_bool("RATE_LIMIT_ENABLED", True),
+        )
+
+@dataclass(frozen=True)
+class AppSettings:
+    """Main application settings aggregator."""
+    # Application info
+    app_name: str = "Forth AI Underwriting"
+    app_version: str = "1.0.0"
+    environment: str = "development"
+    debug: bool = False
     
-    # Embedding Configuration
-    embedding_model_name: str = Field(default="text-embedding-005", env="EMBEDDING_MODEL_NAME")
-    embedding_dimensions: int = Field(default=768, env="EMBEDDING_DIMENSIONS")
-    cache_embeddings: bool = Field(default=True, env="CACHE_EMBEDDINGS")
-    cache_ttl_seconds_embeddings: int = Field(default=3600, env="CACHE_TTL_SECONDS")
-    min_streaming_length: int = Field(default=50, env="MIN_STREAMING_LENGTH")
-    show_ack_threshold: int = Field(default=10, env="SHOW_ACK_THRESHOLD")
-    enable_streaming: bool = Field(default=True, env="ENABLE_STREAMING")
-    streaming_delay: float = Field(default=1.2, env="STREAMING_DELAY")
-    max_chunk_size: int = Field(default=150, env="max_chunk_size")
+    # Server config
+    app_host: str = "0.0.0.0"
+    app_port: int = 8000
+    log_level: str = "INFO"
     
-    # Azure Form Recognizer Configuration (optional)
-    azure_form_recognizer_endpoint: Optional[str] = Field(default=None, description="Azure Form Recognizer endpoint")
-    azure_form_recognizer_key: Optional[str] = Field(default=None, description="Azure Form Recognizer key")
-    azure_form_recognizer_model_id: str = Field(default="prebuilt-document", description="Azure Form Recognizer model ID")
+    # Component settings
+    database: DatabaseSettings = field(default_factory=DatabaseSettings.from_environment)
+    security: SecuritySettings = field(default_factory=SecuritySettings.from_environment)
+    gemini: GeminiSettings = field(default_factory=GeminiSettings.from_environment)
+    forth_api: ForthAPISettings = field(default_factory=ForthAPISettings.from_environment)
+    llm: LLMSettings = field(default_factory=LLMSettings.from_environment)
+    document_processing: DocumentProcessingSettings = field(default_factory=DocumentProcessingSettings.from_environment)
+    aws: AWSSettings = field(default_factory=AWSSettings.from_environment)
+    cache: CacheSettings = field(default_factory=CacheSettings.from_environment)
+    features: FeatureFlags = field(default_factory=FeatureFlags.from_environment)
     
-    # Microsoft Teams Bot Configuration
-    microsoft_app_id: str = Field(env="MICROSOFT_APP_ID")
-    microsoft_app_password: str = Field(env="MICROSOFT_APP_PASSWORD")
-    tenant_id: str = Field(env="TENANT_ID")
-    client_id: str = Field(env="CLIENT_ID")
-    client_secret: str = Field(env="CLIENT_SECRET")
-    teams_webhook_endpoint: str = Field(default="/webhook/teams", description="Teams webhook endpoint")
-    
-    # Webhook Configuration
-    webhook_endpoint: str = Field(default="/webhook/forth-docs", env="WEBHOOK_ENDPOINT")
-    webhook_timeout: int = Field(default=30, env="WEBHOOK_TIMEOUT")
-    webhook_verify_ssl: bool = Field(default=True, description="Verify SSL for webhook requests")
-    
-    # Rate Limiting Configuration
-    rate_limit_enabled: bool = Field(default=True, description="Enable rate limiting")
-    rate_limit_requests_per_minute: int = Field(default=60, description="Default rate limit per minute")
-    rate_limit_burst_size: int = Field(default=10, description="Rate limit burst size")
-    
-    # Monitoring Configuration
-    metrics_enabled: bool = Field(default=True, description="Enable metrics collection")
-    sentry_dsn: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
-    prometheus_metrics_path: str = Field(default="/metrics", description="Prometheus metrics endpoint")
-    
-    # Document Processing Configuration
-    max_file_size_mb: int = Field(default=50, description="Maximum file size in MB")
-    allowed_file_types: List[str] = Field(default=["pdf", "doc", "docx"], description="Allowed file types")
-    document_processing_timeout: int = Field(default=300, description="Document processing timeout in seconds")
-    
-    # LLM Processing Configuration
-    llm_provider: str = Field(default="gemini", description="Primary LLM provider (gemini, openai)")
-    llm_fallback_provider: str = Field(default="openai", description="Fallback LLM provider")
-    llm_max_retries: int = Field(default=3, description="Maximum LLM retry attempts")
-    llm_retry_delay: float = Field(default=1.0, description="Delay between LLM retries")
-    llm_request_timeout: int = Field(default=60, description="LLM request timeout in seconds")
-    
-    # Validation Configuration
-    validation_cache_enabled: bool = Field(default=True, description="Enable validation result caching")
-    validation_cache_ttl_hours: int = Field(default=24, description="Validation cache TTL in hours")
-    validation_timeout_seconds: int = Field(default=120, description="Validation timeout in seconds")
-    validation_retry_attempts: int = Field(default=2, description="Validation retry attempts")
-    
-    # Background Task Configuration
-    background_task_queue_name: str = Field(default="forth_underwriting_queue", description="Background task queue name")
-    background_task_timeout: int = Field(default=600, description="Background task timeout in seconds")
-    background_task_retry_delay: int = Field(default=60, description="Background task retry delay in seconds")
-    
-    # Logging Configuration
-    log_format: str = Field(default="json", description="Log format (json, text)")
-    log_file_path: Optional[str] = Field(default=None, description="Log file path")
-    log_rotation: str = Field(default="1 week", description="Log rotation schedule")
-    log_retention: str = Field(default="1 month", description="Log retention period")
-    
-    # Performance Configuration
-    async_pool_size: int = Field(default=100, description="Async pool size")
-    request_timeout: int = Field(default=300, description="Request timeout in seconds")
-    response_timeout: int = Field(default=300, description="Response timeout in seconds")
-    
-    # Feature Flags
-    enable_ai_parsing: bool = Field(default=True, description="Enable AI parsing of documents")
-    enable_azure_form_recognizer: bool = Field(default=False, description="Enable Azure Form Recognizer")
-    enable_caching: bool = Field(default=True, description="Enable caching")
-    enable_audit_logging: bool = Field(default=True, description="Enable audit logging")
-    enable_feedback_collection: bool = Field(default=True, description="Enable feedback collection")
-    enable_langchain: bool = Field(default=True, description="Enable LangChain integrations")
-    enable_embedding_cache: bool = Field(default=True, description="Enable embedding caching")
-    
-    @validator("environment")
-    def validate_environment(cls, v):
-        valid_environments = ["development", "staging", "production"]
-        if v not in valid_environments:
-            raise ValueError(f"Environment must be one of {valid_environments}")
-        return v
-    
-    @validator("log_level")
-    def validate_log_level(cls, v):
-        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-        if v.upper() not in valid_levels:
-            raise ValueError(f"Log level must be one of {valid_levels}")
-        return v.upper()
-    
-    @validator("cors_origins")
-    def validate_cors_origins(cls, v):
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
-    
-    @validator("allowed_file_types")
-    def validate_file_types(cls, v):
-        if isinstance(v, str):
-            return [ft.strip().lower() for ft in v.split(",")]
-        return [ft.lower() for ft in v]
-    
-    @validator("llm_provider")
-    def validate_llm_provider(cls, v):
-        valid_providers = ["gemini", "openai", "anthropic"]
-        if v not in valid_providers:
-            raise ValueError(f"LLM provider must be one of {valid_providers}")
-        return v
+    @classmethod
+    def from_environment(cls) -> "AppSettings":
+        """Load all settings from environment."""
+        environment = get_env_var("ENVIRONMENT", "development")
+        debug = get_env_var_bool("DEBUG", environment == "development")
+        
+        return cls(
+            app_name=get_env_var("APP_NAME", "Forth AI Underwriting"),
+            app_version=get_env_var("APP_VERSION", "1.0.0"),
+            environment=environment,
+            debug=debug,
+            app_host=get_env_var("APP_HOST", "0.0.0.0"),
+            app_port=get_env_var_int("APP_PORT", 8000),
+            log_level=get_env_var("LOG_LEVEL", "DEBUG" if debug else "INFO"),
+        )
     
     @property
     def is_production(self) -> bool:
+        """Check if running in production environment."""
         return self.environment == "production"
     
-    @property
-    def is_development(self) -> bool:
-        return self.environment == "development"
-    
-    @property
-    def database_config(self) -> dict:
-        """Get database configuration for SQLAlchemy."""
-        config = {
-            "url": self.database_url,
-            "echo": self.debug,
-            "future": True,
+    def validate_configuration(self) -> dict:
+        """Validate configuration for production readiness."""
+        environment = self.environment
+        errors = []
+        warnings = []
+        
+        # Production-critical checks
+        if environment == "production":
+            # Security checks
+            if len(self.security.secret_key) < 64:
+                errors.append("Secret key must be at least 64 characters in production")
+            
+            if "*" in self.security.cors_origins:
+                errors.append("CORS origins cannot include '*' in production")
+            
+            if self.debug:
+                errors.append("Debug mode must be disabled in production")
+            
+            # AWS checks
+            if not self.aws.use_secrets_manager:
+                warnings.append("AWS Secrets Manager is recommended for production")
+            
+            # API checks
+            if not self.forth_api.base_url:
+                errors.append("FORTH_API_BASE_URL is required")
+            
+            if not self.forth_api.api_key:
+                errors.append("FORTH_API_KEY is required")
+            
+            if not self.gemini.api_key and not self.gemini.use_aws_secrets:
+                errors.append("Gemini API key is required")
+        
+        # General checks
+        if not self.database.url.startswith("postgresql"):
+            errors.append("Only PostgreSQL is supported")
+        
+        # Calculate security score
+        security_checks = {
+            "strong_secret": len(self.security.secret_key) >= 64,
+            "aws_secrets": self.aws.use_secrets_manager,
+            "secure_cors": "*" not in self.security.cors_origins,
+            "debug_off": not self.debug,
+            "postgresql": self.database.url.startswith("postgresql"),
         }
         
-        if self.database_url.startswith("postgresql"):
-            config.update({
-                "pool_size": self.database_pool_size,
-                "max_overflow": self.database_max_overflow,
-                "pool_timeout": self.database_pool_timeout,
-                "pool_recycle": self.database_pool_recycle,
-                "pool_pre_ping": True,
-            })
-        elif self.database_url.startswith("sqlite"):
-            config.update({
-                "connect_args": {
-                    "check_same_thread": False,
-                    "timeout": 20,
-                },
-                "poolclass": "StaticPool",
-            })
+        security_score = sum(1 for check in security_checks.values() if check) * 20
         
-        return config
-    
-    @property
-    def redis_config(self) -> dict:
-        """Get Redis configuration."""
-        if not self.redis_url:
-            return {}
-        
-        config = {
-            "url": self.redis_url,
-            "db": self.redis_db,
-            "max_connections": self.redis_max_connections,
-            "decode_responses": True,
-        }
-        
-        if self.redis_password:
-            config["password"] = self.redis_password
-        
-        return config
-    
-    @property
-    def gemini_config(self) -> dict:
-        """Get Gemini configuration."""
         return {
-            "model_name": self.gemini_model_name,
-            "temperature": self.gemini_temperature,
-            "max_output_tokens": self.gemini_max_output_tokens,
-            "google_api_key": self.gemini_api_key,
-            "project": self.google_cloud_project,
-            "location": self.google_cloud_location,
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "security_score": security_score,
+            "security_checks": security_checks,
+            "environment": environment,
         }
     
-    @property
-    def openai_config(self) -> dict:
-        """Get OpenAI configuration."""
-        return {
-            "api_key": self.openai_api_key,
-            "model": self.openai_model,
-            "temperature": self.openai_temperature,
-            "max_tokens": self.openai_max_tokens,
-            "timeout": self.openai_timeout,
-        }
+    def cleanup(self):
+        """Clean up temporary resources like credential files."""
+        if self.gemini.use_aws_secrets and self.gemini.credentials_path:
+            try:
+                from forth_ai_underwriting.utils.secret_manager import cleanup_temp_credentials
+                cleanup_temp_credentials(self.gemini.credentials_path)
+                logger.info("Cleaned up temporary Gemini credentials")
+            except Exception as e:
+                logger.error(f"Failed to cleanup temporary credentials: {e}")
+
+# Create global settings instance
+try:
+    settings = AppSettings.from_environment()
+    logger.info(f"✅ Configuration loaded successfully for environment: {settings.environment}")
+    logger.info(f"✅ Database: PostgreSQL at {settings.database.host}:{settings.database.port}")
     
-    model_config = {
-        "env_file": "configs/.env",
-        "env_file_encoding": "utf-8",
-        "case_sensitive": False,
-        "env_prefix": "",  # No prefix since you have specific env var names
-        "extra": "ignore",  # Ignore extra fields
-    }
+    # Auto-cleanup on module unload
+    import atexit
+    atexit.register(settings.cleanup)
+    
+except Exception as exc:
+    logger.critical("❌ Failed to load configuration – exiting", exc_info=exc)
+    raise
 
-
-# Global settings instance
-settings = Settings()
-
-
-# Development settings override
-def get_dev_settings() -> Settings:
-    """Get development-specific settings."""
-    return Settings(
-        environment="development",
-        debug=True,
-        log_level="DEBUG",
-        database_url="sqlite:///./dev_forth_underwriting.db",
-        cors_origins=["*"],
-        rate_limit_enabled=False,
-        cache_ttl_seconds=60,  # Shorter cache for development
-        validation_cache_ttl_hours=1,  # Shorter validation cache
-    )
-
-
-# Test settings override
-def get_test_settings() -> Settings:
-    """Get test-specific settings."""
-    return Settings(
-        environment="test",
-        debug=True,
-        log_level="DEBUG",
-        database_url="sqlite:///:memory:",
-        cors_origins=["*"],
-        rate_limit_enabled=False,
-        enable_caching=False,
-        metrics_enabled=False,
-        validation_cache_enabled=False,
-    )
+__all__ = ["settings", "AppSettings"]
 

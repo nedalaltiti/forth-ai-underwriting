@@ -125,10 +125,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, redis_url: str = None):
         super().__init__(app)
         self.redis_client = None
-        if redis_url or settings.redis_url:
+        if redis_url or settings.cache.redis_url:
             try:
                 import redis
-                self.redis_client = redis.from_url(redis_url or settings.redis_url)
+                self.redis_client = redis.from_url(redis_url or settings.cache.redis_url)
             except ImportError:
                 logger.warning("Redis not available for rate limiting")
     
@@ -338,7 +338,7 @@ def setup_middleware(app):
     # Add CORS middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
+        allow_origins=settings.security.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -351,7 +351,7 @@ def setup_middleware(app):
     app.add_middleware(MetricsMiddleware)
     
     # Add rate limiting if Redis is available
-    if hasattr(settings, 'redis_url') and settings.redis_url:
+    if hasattr(settings.cache, 'redis_url') and settings.cache.redis_url:
         app.add_middleware(RateLimitMiddleware)
     
     return app 

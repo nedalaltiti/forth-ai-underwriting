@@ -86,7 +86,7 @@ FORTH_LOG_LEVEL=DEBUG
 FORTH_SECRET_KEY=dev-secret-key-change-in-production
 
 # Database Configuration
-FORTH_DATABASE_URL=sqlite:///./dev_forth_underwriting.db
+FORTH_DATABASE_URL=postgresql://forth_user:forth_password@localhost:5432/forth_underwriting_dev
 
 # Redis Configuration (optional for development)
 # FORTH_REDIS_URL=redis://localhost:6379/0

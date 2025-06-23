@@ -58,8 +58,8 @@ GOOGLE_API_KEY=your_gemini_api_key
 GEMINI_MODEL_NAME=gemini-2.0-flash-001
 GEMINI_TEMPERATURE=0.0
 
-# Database Configuration
-DATABASE_URL=sqlite:///./forth_underwriting.db
+# Database Configuration (PostgreSQL required)
+DATABASE_URL=postgresql://forth_user:forth_password@localhost:5432/forth_underwriting_dev
 
 # Teams Configuration
 MICROSOFT_APP_ID=your_teams_app_id

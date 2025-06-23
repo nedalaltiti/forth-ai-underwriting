@@ -72,6 +72,10 @@ dependencies = [
     "pillow~=10.0.0",
     "aiofiles~=23.2.1",
     
+    # AWS Services
+    "boto3~=1.26.0",  # AWS SDK
+    "botocore~=1.29.0",  # AWS Core
+    
     # Utilities
     "tenacity~=8.2.3",  # Retry logic
     "click~=8.1.7",  # CLI support

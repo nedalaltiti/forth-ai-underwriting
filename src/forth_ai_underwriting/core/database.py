@@ -1,22 +1,22 @@
 """
 Database configuration and connection management.
+PostgreSQL only - SQLite removed for production readiness.
 """
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
 from contextlib import contextmanager
 from typing import Generator
 import logging
 
-from forth_ai_underwriting.config.settings import settings
+from forth_ai_underwriting.config.settings import database, settings
 from forth_ai_underwriting.core.models import Base
 
 # Configure SQLAlchemy logging
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 class DatabaseManager:
-    """Manages database connections and sessions."""
+    """Manages PostgreSQL database connections and sessions."""
     
     def __init__(self):
         self.engine = None
@@ -24,39 +24,24 @@ class DatabaseManager:
         self._initialize_engine()
     
     def _initialize_engine(self):
-        """Initialize the database engine with appropriate configuration."""
+        """Initialize the PostgreSQL database engine."""
         
-        # Configure engine based on database type
-        if settings.database_url.startswith("sqlite"):
-            self.engine = create_engine(
-                settings.database_url,
-                poolclass=StaticPool,
-                connect_args={
-                    "check_same_thread": False,
-                    "timeout": 20,
-                },
-                echo=settings.debug,
-                future=True
-            )
-        elif settings.database_url.startswith("postgresql"):
-            self.engine = create_engine(
-                settings.database_url,
-                pool_size=20,
-                max_overflow=30,
-                pool_pre_ping=True,
-                pool_recycle=300,
-                echo=settings.debug,
-                future=True
-            )
-        else:
-            # Default configuration
-            self.engine = create_engine(
-                settings.database_url,
-                echo=settings.debug,
-                future=True
-            )
+        # Verify we're using PostgreSQL
+        if not database.url.startswith("postgresql"):
+            raise ValueError(f"Only PostgreSQL is supported. Current URL: {database.url}")
         
-        # Add connection event listeners
+        logger = logging.getLogger(__name__)
+        logger.info(f"Initializing PostgreSQL connection to {database.host}:{database.port}")
+        
+        # Create PostgreSQL engine with optimal configuration
+        self.engine = create_engine(
+            database.url,
+            **database.engine_kwargs,
+            echo=settings.debug,
+            future=True
+        )
+        
+        # Add connection event listeners for PostgreSQL optimization
         self._add_event_listeners()
         
         # Create session factory
@@ -66,29 +51,54 @@ class DatabaseManager:
             autoflush=False,
             expire_on_commit=False
         )
+        
+        logger.info("✅ PostgreSQL database engine initialized successfully")
     
     def _add_event_listeners(self):
-        """Add database event listeners for monitoring and optimization."""
+        """Add PostgreSQL-specific event listeners for monitoring and optimization."""
         
         @event.listens_for(self.engine, "connect")
-        def set_sqlite_pragma(dbapi_connection, connection_record):
-            """Set SQLite pragmas for better performance."""
-            if settings.database_url.startswith("sqlite"):
-                cursor = dbapi_connection.cursor()
-                cursor.execute("PRAGMA foreign_keys=ON")
-                cursor.execute("PRAGMA journal_mode=WAL")
-                cursor.execute("PRAGMA synchronous=NORMAL")
-                cursor.execute("PRAGMA cache_size=10000")
-                cursor.execute("PRAGMA temp_store=MEMORY")
-                cursor.close()
+        def set_postgresql_settings(dbapi_connection, connection_record):
+            """Set PostgreSQL session settings for optimal performance."""
+            with dbapi_connection.cursor() as cursor:
+                # Set timezone
+                cursor.execute("SET timezone TO 'UTC'")
+                
+                # Optimize for application workload
+                cursor.execute("SET statement_timeout = '300s'")  # 5 minute timeout
+                cursor.execute("SET lock_timeout = '30s'")        # 30 second lock timeout
+                cursor.execute("SET idle_in_transaction_session_timeout = '60s'")  # 1 minute idle timeout
+                
+                # Connection logging for monitoring
+                connection_record.info['connected_at'] = dbapi_connection.get_backend_pid()
+        
+        @event.listens_for(self.engine, "checkout")
+        def receive_checkout(dbapi_connection, connection_record, connection_proxy):
+            """Log when a connection is checked out from the pool."""
+            logger = logging.getLogger(__name__)
+            if settings.debug:
+                logger.debug(f"Database connection checked out: PID {connection_record.info.get('connected_at')}")
+        
+        @event.listens_for(self.engine, "checkin")  
+        def receive_checkin(dbapi_connection, connection_record):
+            """Log when a connection is returned to the pool."""
+            logger = logging.getLogger(__name__)
+            if settings.debug:
+                logger.debug(f"Database connection checked in: PID {connection_record.info.get('connected_at')}")
     
     def create_tables(self):
         """Create all database tables."""
+        logger = logging.getLogger(__name__)
+        logger.info("Creating database tables...")
         Base.metadata.create_all(bind=self.engine)
+        logger.info("✅ Database tables created successfully")
     
     def drop_tables(self):
         """Drop all database tables."""
+        logger = logging.getLogger(__name__)
+        logger.warning("Dropping all database tables...")
         Base.metadata.drop_all(bind=self.engine)
+        logger.info("✅ Database tables dropped")
     
     @contextmanager
     def get_session(self) -> Generator[Session, None, None]:
@@ -106,6 +116,44 @@ class DatabaseManager:
     def get_session_direct(self) -> Session:
         """Get a database session for dependency injection."""
         return self.SessionLocal()
+    
+    def health_check(self) -> dict:
+        """Perform a health check on the database connection."""
+        try:
+            with self.get_session() as session:
+                # Simple query to test connection
+                result = session.execute("SELECT 1 as health_check")
+                row = result.fetchone()
+                
+                # Get connection pool stats
+                pool = self.engine.pool
+                pool_status = {
+                    "size": pool.size(),
+                    "checked_in": pool.checkedin(),
+                    "checked_out": pool.checkedout(),
+                    "invalidated": pool.invalidated(),
+                    "overflow": pool.overflow(),
+                }
+                
+                return {
+                    "status": "healthy",
+                    "database_type": "postgresql",
+                    "connection_test": "passed" if row[0] == 1 else "failed",
+                    "pool_status": pool_status,
+                    "url_host": database.host,
+                    "url_port": database.port,
+                    "url_database": database.name,
+                }
+                
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "database_type": "postgresql", 
+                "error": str(e),
+                "url_host": database.host,
+                "url_port": database.port,
+                "url_database": database.name,
+            }
 
 
 # Global database manager instance
