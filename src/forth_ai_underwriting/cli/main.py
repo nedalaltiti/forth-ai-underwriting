@@ -231,8 +231,8 @@ def status():
             
             if result:
                 click.echo("✅ Database connection successful")
-                click.echo(f"🔗 Database URL: {settings.database_url}")
-                click.echo(f"📊 Pool size: {settings.database_pool_size}")
+                click.echo(f"🔗 Database URL: {settings.database.url}")
+                click.echo(f"📊 Pool size: {settings.database.pool_size}")
             else:
                 click.echo("❌ Database connection failed")
                 
@@ -325,20 +325,20 @@ def show():
                 "Port": settings.app_port
             },
             "Database": {
-                "URL": settings.database_url,
-                "Pool Size": settings.database_pool_size
+                "URL": settings.database.url,
+                "Pool Size": settings.database.pool_size
             },
             "AI Services": {
-                "Primary LLM": settings.llm_provider,
-                "Fallback LLM": settings.llm_fallback_provider,
-                "Gemini Model": settings.gemini_model_name,
-                "AI Parsing Enabled": settings.enable_ai_parsing
+                "Primary LLM": settings.llm.provider,
+                "Fallback LLM": settings.llm.fallback_provider,
+                "Gemini Model": settings.gemini.model_name,
+                "AI Parsing Enabled": settings.document_processing.enable_ai_parsing
             },
             "Features": {
-                "Caching": settings.enable_caching,
-                "Audit Logging": settings.enable_audit_logging,
-                "Metrics": settings.metrics_enabled,
-                "Rate Limiting": settings.rate_limit_enabled
+                "Caching": settings.cache.enable_caching,
+                "Audit Logging": settings.features.enable_audit_logging,
+                "Metrics": settings.features.metrics_enabled,
+                "Rate Limiting": settings.features.rate_limit_enabled
             }
         }
         
@@ -365,21 +365,21 @@ def validate_config():
         issues = []
         
         # Check required settings
-        if not settings.forth_api_base_url:
+        if not settings.forth_api.base_url:
             issues.append("❌ FORTH_API_BASE_URL not configured")
         
-        if not settings.forth_api_key:
+        if not settings.forth_api.api_key:
             issues.append("❌ FORTH_API_KEY not configured")
         
-        if not settings.gemini_api_key:
+        if not settings.gemini.api_key:
             issues.append("⚠️  GOOGLE_API_KEY not configured (Gemini features disabled)")
         
-        if not settings.secret_key:
+        if not settings.security.secret_key:
             issues.append("❌ SECRET_KEY not configured")
         
         # Check database configuration
-        if settings.database_url == "sqlite:///./forth_underwriting.db" and settings.is_production:
-            issues.append("⚠️  Using SQLite in production (consider PostgreSQL)")
+        if not settings.database.url.startswith("postgresql"):
+            issues.append("⚠️  Only PostgreSQL is supported for production deployment")
         
         if issues:
             click.echo("🔍 Configuration Issues Found:")
@@ -482,14 +482,14 @@ async def check_external_apis_health():
         import httpx
         async with httpx.AsyncClient() as client:
             # Simple health check (adjust URL as needed)
-            response = await client.get(f"{settings.forth_api_base_url}/health", timeout=5)
+            response = await client.get(f"{settings.forth_api.base_url}/health", timeout=5)
             results["forth_api"] = {"status": "healthy" if response.status_code == 200 else "degraded"}
     except Exception as e:
         results["forth_api"] = {"status": "unhealthy", "error": str(e)}
     
     # Check Gemini API
     try:
-        if settings.gemini_api_key:
+        if settings.gemini.api_key:
             from forth_ai_underwriting.services.gemini_service import get_gemini_service
             gemini_service = get_gemini_service()
             health = await gemini_service.health_check()

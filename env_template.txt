@@ -1,5 +1,29 @@
 # Forth AI Underwriting System Configuration
 # Copy this file to configs/.env and update with your actual values
+#
+# 🚨 PRODUCTION SECURITY REQUIREMENTS:
+# 1. Generate a strong 64+ character SECRET_KEY (never use defaults)
+# 2. Set DEBUG=false and LOG_LEVEL=INFO (not DEBUG)
+# 3. Configure specific CORS origins (never use "*" in production)
+# 4. Use PostgreSQL with AWS Secrets Manager (not SQLite)
+# 5. Enable rate limiting and monitoring
+# 6. Use HTTPS for all external communication
+#
+# PRODUCTION SETUP:
+# 1. Set ENVIRONMENT=production
+# 2. Set USE_AWS_SECRETS=true
+# 3. Configure AWS credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+# 4. Create secrets in AWS Secrets Manager with the names specified below
+# 5. Database credentials and Gemini API keys will be loaded automatically
+#
+# LOCAL DEVELOPMENT:
+# 1. Set ENVIRONMENT=development
+# 2. Set USE_AWS_SECRETS=false
+# 3. Set GOOGLE_API_KEY directly for Gemini
+# 4. Use local PostgreSQL database (DATABASE_URL will be used when AWS secrets disabled)
+#
+# 🔧 VALIDATE YOUR CONFIGURATION:
+# Run: uv run python scripts/validate_config.py
 
 # Application Configuration
 APP_HOST=0.0.0.0
@@ -8,8 +32,9 @@ DEBUG=true
 LOG_LEVEL=INFO
 ENVIRONMENT=development
 
-# Security
-SECRET_KEY=your_secret_key_here_change_in_production
+# Security (CRITICAL - MUST BE CHANGED FOR PRODUCTION)
+# 🚨 Generate with: python -c "import secrets; print(secrets.token_urlsafe(64))"
+SECRET_KEY=your_secret_key_here_change_in_production_12345
 
 # Webhook Configuration
 WEBHOOK_ENDPOINT=/webhook/forth-docs
@@ -32,7 +57,7 @@ GOOGLE_CLOUD_PROJECT=your_project_id
 GOOGLE_CLOUD_LOCATION=us-central1
 
 # Database Configuration
-DATABASE_URL=sqlite:///./forth_underwriting.db
+DATABASE_URL=postgresql://forth_user:forth_password@localhost:5432/forth_underwriting_dev
 
 # Redis Configuration (Optional for local testing)
 REDIS_URL=redis://localhost:6379/0
@@ -47,10 +72,26 @@ CLIENT_SECRET=your_client_secret
 # OpenAI Configuration (Optional - fallback provider)
 OPENAI_API_KEY=your_openai_api_key_here
 
-# AWS Configuration (Optional)
+# AWS Secrets Manager Configuration (Production Recommended)
+USE_AWS_SECRETS=false
 AWS_REGION=us-west-1
-AWS_ACCESS_KEY_ID=your_aws_access_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+AWS_ACCESS_KEY_ID=your_aws_access_key_here
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key_here
+
+# AWS Secret Names (must exist in your AWS Secrets Manager)
+AWS_DB_SECRET_NAME=forth-underwriting-db-prod
+AWS_GEMINI_SECRET_NAME=forth-underwriting-gemini-prod
+
+# Embedding Configuration
+EMBEDDING_MODEL_NAME=text-embedding-005
+EMBEDDING_DIMENSIONS=768
+CACHE_EMBEDDINGS=true
+CACHE_TTL_SECONDS=3600
+MIN_STREAMING_LENGTH=50
+SHOW_ACK_THRESHOLD=10
+ENABLE_STREAMING=true
+STREAMING_DELAY=1.2
+max_chunk_size=150
 
 # Feature Flags
 ENABLE_AI_PARSING=true
@@ -65,4 +106,27 @@ VALIDATION_TIMEOUT_SECONDS=120
 
 # Rate Limiting
 RATE_LIMIT_ENABLED=false
-RATE_LIMIT_REQUESTS_PER_MINUTE=60 
+RATE_LIMIT_REQUESTS_PER_MINUTE=60
+
+# Database pool settings
+DB_POOL_SIZE=20
+DB_MAX_OVERFLOW=30
+DB_POOL_TIMEOUT=30
+DB_POOL_RECYCLE=3600
+
+# Alternative format for DATABASE_URL components:
+# DB_HOST=localhost  
+# DB_PORT=5432
+# DB_NAME=forth_underwriting_dev
+# DB_USER=forth_user
+# DB_PASSWORD=forth_password
+# DB_SSLMODE=disable 
+
+# Development Setup (Optional for local development):
+# 1. Set ENVIRONMENT=development
+# 2. Use development SECRET_KEY (will use default if not set)
+# 3. Can disable AWS Secrets Manager (USE_AWS_SECRETS=false)
+# 4. Use local PostgreSQL database (DATABASE_URL will be used when AWS secrets disabled)
+# 5. CORS origins can include wildcards
+# 6. Use development Teams bot credentials
+# 7. Use development Forth API credentials 

@@ -63,10 +63,10 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=settings.cors_allow_credentials,
-    allow_methods=settings.cors_allow_methods,
-    allow_headers=settings.cors_allow_headers,
+    allow_origins=settings.security.cors_origins,
+    allow_credentials=settings.security.cors_allow_credentials,
+    allow_methods=settings.security.cors_allow_methods,
+    allow_headers=settings.security.cors_allow_headers,
 )
 
 
@@ -170,7 +170,7 @@ async def health_check():
         )
 
 
-@app.post(settings.webhook_endpoint, response_model=SuccessResponse)
+@app.post(settings.forth_api.webhook_endpoint, response_model=SuccessResponse)
 async def forth_webhook(
     payload: WebhookPayload,
     background_tasks: BackgroundTasks,
@@ -184,7 +184,7 @@ async def forth_webhook(
         logger.info(f"Received webhook for contact_id: {payload.contact_id}")
         
         # Validate webhook (optional signature verification)
-        if settings.forth_webhook_secret:
+        if settings.forth_api.webhook_secret:
             # Add webhook signature validation here if needed
             pass
         

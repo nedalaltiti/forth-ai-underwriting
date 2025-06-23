@@ -70,9 +70,9 @@ class ForthAPIClient:
     
     def __init__(self):
         self.client = httpx.AsyncClient(
-            base_url=settings.forth_api_base_url,
-            headers={"Authorization": f"Bearer {settings.forth_api_key}"},
-            timeout=settings.forth_api_timeout
+            base_url=settings.forth_api.base_url,
+            headers={"Authorization": f"Bearer {settings.forth_api.api_key}"},
+            timeout=settings.forth_api.timeout
         )
     
     async def fetch_contact_data(self, contact_id: str) -> Dict[str, Any]:

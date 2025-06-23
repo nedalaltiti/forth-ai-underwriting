@@ -88,9 +88,9 @@ class GeminiProvider(BaseLLMProvider):
     
     def __init__(self):
         super().__init__("gemini")
-        self.model_name = settings.gemini_model_name
-        self.temperature = settings.gemini_temperature
-        self.max_tokens = settings.gemini_max_output_tokens
+        self.model_name = settings.gemini.model_name
+        self.temperature = settings.gemini.temperature
+        self.max_tokens = settings.gemini.max_output_tokens
         
         # Initialize Gemini client lazily
         self._client = None
@@ -101,7 +101,7 @@ class GeminiProvider(BaseLLMProvider):
         if self._client is None:
             try:
                 import google.generativeai as genai
-                genai.configure(api_key=settings.gemini_api_key)
+                genai.configure(api_key=settings.gemini.api_key)
                 self._client = genai.GenerativeModel(self.model_name)
             except ImportError:
                 raise AIProviderError("google-generativeai package not installed")
@@ -233,8 +233,8 @@ class LLMService:
     
     def __init__(self):
         self.providers: Dict[str, BaseLLMProvider] = {}
-        self.primary_provider = settings.llm_provider
-        self.fallback_provider = settings.llm_fallback_provider
+        self.primary_provider = settings.llm.provider
+        self.fallback_provider = settings.llm.fallback_provider
         
         self._initialize_providers()
         logger.info(f"LLMService initialized with primary: {self.primary_provider}, fallback: {self.fallback_provider}")
@@ -242,21 +242,19 @@ class LLMService:
     def _initialize_providers(self):
         """Initialize available LLM providers."""
         # Initialize Gemini
-        if settings.gemini_api_key and settings.gemini_api_key != "your_gemini_api_key_here":
+        if settings.gemini.api_key and settings.gemini.api_key != "your_gemini_api_key_here":
             try:
                 self.providers["gemini"] = GeminiProvider()
                 logger.info("Gemini provider initialized successfully")
             except Exception as e:
                 logger.warning(f"Failed to initialize Gemini provider: {e}")
-        else:
-            logger.info("Gemini provider available but API key not configured")
         
-        # Initialize OpenAI (future implementation)
-        if settings.openai_api_key and settings.openai_api_key != "your_openai_api_key_here":
-            logger.info("OpenAI provider available but not implemented yet")
+        # Initialize OpenAI (if configured)
+        if settings.llm.openai_api_key and settings.llm.openai_api_key != "your_openai_api_key_here":
+            logger.info("OpenAI provider configured but not implemented")
         
         if not self.providers:
-            logger.info("No LLM providers configured - add API keys to enable AI features")
+            logger.warning("No LLM providers available - API keys may not be configured")
     
     async def generate(
         self,

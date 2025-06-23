@@ -71,11 +71,11 @@ class DocumentProcessor:
     def __init__(self):
         self.gemini_service = get_gemini_service()
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=settings.max_chunk_size * 100,  # Convert to reasonable chunk size
+            chunk_size=settings.document_processing.max_chunk_size * 100,  # Convert to reasonable chunk size
             chunk_overlap=200,
-            length_function=len,
+            length_function=len
         )
-        self.http_client = httpx.AsyncClient(timeout=settings.document_processing_timeout)
+        self.http_client = httpx.AsyncClient(timeout=settings.document_processing.processing_timeout)
         
         logger.info("DocumentProcessor initialized")
     
@@ -114,7 +114,7 @@ class DocumentProcessor:
             contract_data = None
             metadata = None
             
-            if not skip_ai_parsing and settings.enable_ai_parsing:
+            if not skip_ai_parsing and settings.document_processing.enable_ai_parsing:
                 try:
                     # Extract structured data using Gemini
                     contract_data = await self.gemini_service.parse_contract_document(
@@ -209,7 +209,7 @@ class DocumentProcessor:
             
             # Validate file size
             file_size = len(response.content)
-            max_size = settings.max_file_size_mb * 1024 * 1024
+            max_size = settings.document_processing.max_file_size_mb * 1024 * 1024
             if file_size > max_size:
                 raise DocumentProcessingError(
                     f"File too large: {file_size} bytes (max: {max_size})",
@@ -472,9 +472,9 @@ class DocumentProcessor:
                     "http_client": "healthy" if self.http_client else "unhealthy"
                 },
                 "settings": {
-                    "max_file_size_mb": settings.max_file_size_mb,
-                    "ai_parsing_enabled": settings.enable_ai_parsing,
-                    "processing_timeout": settings.document_processing_timeout
+                    "max_file_size_mb": settings.document_processing.max_file_size_mb,
+                    "ai_parsing_enabled": settings.document_processing.enable_ai_parsing,
+                    "processing_timeout": settings.document_processing.processing_timeout
                 }
             }
             

@@ -61,7 +61,7 @@ class GeminiService:
     
     def __init__(self):
         self.llm_service = get_llm_service()
-        self.model_name = settings.gemini_model_name
+        self.model_name = settings.gemini.model_name
         logger.info(f"GeminiService initialized with model: {self.model_name}")
     
     async def parse_contract_document(self, document_text: str, document_url: str = "N/A") -> ContractData:
