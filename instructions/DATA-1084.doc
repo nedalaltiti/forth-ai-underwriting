@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>[#DATA-1084] [Scope 1] [Underwriting AI] - Chat agent on MS Teams</title>
+    <meta http-equiv="Content-Type" Content="application/vnd.ms-word; charset=UTF-8">
+        <style type="text/css">
+
+.tableBorder, .grid
+{
+    background-color: #fff;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tableBorder td, .grid td
+{
+    vertical-align: top;
+    padding: 2px;
+    border: 1px solid #ccc;
+}
+
+.noPadding
+{
+    padding: 0 !important;
+}
+
+h3 .subText
+{
+    font-size: 60%;
+    font-weight: normal;
+}
+
+.tabLabel
+{
+    font-weight: bold;
+    border: 1px solid #ccc;
+    border-bottom:none;
+    padding: 2px;
+    display: inline;
+}
+
+td.blank
+{
+    padding: 0;
+    margin: 0;
+}
+
+.blank td
+{
+    border: none;
+}
+
+#descriptionArea
+{
+    margin: 0;
+    padding: 2px;
+    border: 1px solid #ccc;
+}
+
+hr
+{
+    border-top:1px solid #aaa;
+}
+
+hr.fullcontent
+{
+  height: 15px;
+  padding: 10px 0;
+  background: #fff url('https://rnd-usclarity.atlassian.net/images/icons/hr.gif') no-repeat scroll center;
+}
+
+</style>
+
+</head>
+<body>
+
+<table class="tableBorder" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td bgcolor="#f0f0f0" width="100%" colspan="2" valign="top">
+                            <h3 class="formtitle">
+                        [DATA-1084]&nbsp;<a href="https://rnd-usclarity.atlassian.net/browse/DATA-1084">[Scope 1] [Underwriting AI] - Chat agent on MS Teams</a>
+            <span class="subText">
+               Created: 02/Jun/25                   &nbsp;Updated: 18/Jun/25
+
+                                            </span>
+            </h3>
+        </td>
+    </tr>
+    <tr>
+        <td width="20%"><b>Status:</b></td>
+        <td width="80%">TODO</td>
+    </tr>
+    <tr>
+        <td width="20%"><b>Project:</b></td>
+        <td width="80%"><a href="https://rnd-usclarity.atlassian.net/secure/BrowseProject.jspa?id=10033">Data-SCRUM</a></td>
+    </tr>
+
+        <tr>
+            <td><b>Components:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+
+        <tr>
+            <td><b>Affects versions:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+
+        <tr>
+            <td><b>Fix versions:</b></td>
+            <td>
+                            None
+                </td>
+    </tr>
+    
+    
+    </table>
+
+<br />
+<table class="grid" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td bgcolor="#f0f0f0" valign="top" width="20%">
+            <b>Type:</b>
+        </td>
+        <td bgcolor="#ffffff" valign="top"  width="30%" >
+            Epic
+        </td>
+
+                    <td bgcolor="#f0f0f0">
+                <b>Priority:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" nowrap>
+                Medium
+            </td>
+            </tr>
+    <tr>
+                        <td bgcolor="#f0f0f0" valign="top" width="20%">
+                <b>Reporter:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top"  width="30%" >
+                                        
+                
+        
+            <a class="user-hover" rel="712020:06aff4a8-ac97-47c0-b4d2-1150ce46c689"
+                id="word_reporter_712020:06aff4a8-ac97-47c0-b4d2-1150ce46c689"
+                href="https://rnd-usclarity.atlassian.net/secure/ViewProfile.jspa?accountId=712020%3A06aff4a8-ac97-47c0-b4d2-1150ce46c689">
+                    Noor Tawalbeh
+                </a>
+
+                            </td>
+        
+                    <td bgcolor="#f0f0f0" width="20%">
+                <b>Assignee:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" nowrap  width="30%" >
+                                        
+                
+        
+            <a class="user-hover" rel="712020:74cb1b4b-2ca0-41b2-9abf-c336d6056066"
+                id="word_assignee_712020:74cb1b4b-2ca0-41b2-9abf-c336d6056066"
+                href="https://rnd-usclarity.atlassian.net/secure/ViewProfile.jspa?accountId=712020%3A74cb1b4b-2ca0-41b2-9abf-c336d6056066">
+                    Russia Haddad
+                </a>
+
+                            </td>
+            </tr>
+    	<tr>
+		<td bgcolor="#f0f0f0" width="20%">
+			<b>Resolution:</b>
+		</td>
+		<td bgcolor="#ffffff" valign="top" width="30%" nowrap>
+            				Unresolved
+                    </td>
+                    <td bgcolor="#f0f0f0" width="20%">
+                <b>Votes:</b>
+            </td>
+            <td bgcolor="#ffffff" valign="top" width="30%" nowrap>
+                0
+            </td>
+        
+    </tr>
+    
+        <tr>
+        <td bgcolor="#f0f0f0" width="20%">
+            <b>Labels:</b>
+        </td>
+        <td id="labels-21258-value" class="value" bgcolor="#ffffff" valign="top" colspan="3" nowrap>
+                            AI                    </td>
+    </tr>
+    
+    	<tr>
+        		<td bgcolor="#f0f0f0" width="20%"><b>Remaining Estimate:</b></td>
+        <td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+    </tr>
+    <tr>
+                <td bgcolor="#f0f0f0" width="20%"><b>Time Spent:</b></td>
+		<td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+	</tr>
+    <tr>
+                <td bgcolor="#f0f0f0" width="20%"><b>Original estimate:</b></td>
+		<td bgcolor="#ffffff" valign="top" nowrap width="80%" colspan="3">
+                            Not Specified
+            		</td>
+    </tr>
+    
+    </table>
+
+
+
+    <br />
+
+    	<table class="grid" cellpadding="0" cellspacing="0" border="0" width="100%">
+            
+
+        
+    
+
+
+    
+                        <tr>
+                <td bgcolor="#f0f0f0" width="20%" valign="top"><b>Sprint:</b></td>
+                <td id="customfield_10020-21258-value" class="value" bgcolor="#ffffff" width="80%"></td>
+            </tr>
+                                <tr>
+                <td bgcolor="#f0f0f0" width="20%" valign="top"><b>QA Assignee:</b></td>
+                <td id="customfield_10199-21258-value" class="value" bgcolor="#ffffff" width="80%">        <span class="tinylink">        <span class="user-hover" rel="9fb65242-1a8c-4573-a7a7-ca06dc2190c4" id="user_cf_9fb65242-1a8c-4573-a7a7-ca06dc2190c4">Ahmed Abdulhadi</span></span>
+    </td>
+            </tr>
+            </table>
+
+    <br/>
+
+    <table cellpadding="2" cellspacing="0" border="0" width="100%" align="center">
+    <tr>
+        <td bgcolor="#bbbbbb" width="1%" nowrap align="center">
+            &nbsp;<font color="#ffffff"><b>Description</b></font>&nbsp;
+        </td>
+        <td>&nbsp;</td>
+    </tr>
+    </table>
+
+    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+        <td id="descriptionArea">
+            <p>The underwriting process takes place once a file is “Submitted” into Forth CRM, various checks are made by the underwriting team, which including cross checking documents with various data sources and checking enrolled debts against guidelines.</p>
+
+<p>To help elevate the load on the <b>UW</b> team and to enhance accuracy, an AI is needed to help in these checks mentioned below, for the 1st scope the AI will create a <b>teams chat-bot</b> that does the following : -</p>
+
+<ul>
+	<li>Takes a <b>contact_id</b></li>
+	<li><b>Returns the results</b> in the following format
+	<ul>
+		<li>Validation Point 1 title  ---- Result ---- Reason</li>
+		<li>Validation Point 2 title  ---- Result ---- Reason</li>
+		<li>etc ……….</li>
+	</ul>
+	</li>
+	<li>The bot asks the user for <b>feedback</b>, 5 stars and a brief description (should be logged for future enhancements)</li>
+</ul>
+
+
+<p><b>Validation Checklist</b></p>
+
+<hr />
+
+<ol>
+	<li><b>Valid Claim of Hardship</b><br/>
+<b>Description:</b> The description should make sense in terms of a financial hardship. One-word entries are acceptable.<br/>
+<b>Source:</b> Forth / Custom fields <br/>
+<b>Output</b> : Pass or No Pass W/ confidence score</li>
+</ol>
+
+
+<hr />
+
+<ol>
+	<li><b>Budget Analysis</b><br/>
+<b>Description:</b> Indicating a positive surplus.<br/>
+<b>Source:</b> Forth / Budget analysis<br/>
+<b>Output</b> : Pass or No Pass </li>
+</ol>
+
+
+<hr />
+
+<ol>
+	<li><b>Contract</b><br/>
+<b>Description:</b></li>
+</ol>
+
+
+<ul>
+	<li>Sender IP and signer IP must differ in the contract <b>(AI)</b></li>
+	<li>Mailing address on Forth must match the contract</li>
+	<li>Signatures must follow Forth’s requirements (applicant and co-applicant in correct fields, no dots/dashes)</li>
+	<li>Bank details must match Forth</li>
+	<li>VLP contract section must be present and signed (if applicable) with matching SSN, DOB, and name</li>
+	<li>Payment gateway contract must be signed with matching enrolment tab (date, count, amount — tolerance: $100 less or $3 more)</li>
+	<li>SSN must match across 3 places (last 4 digits in gateway, full on company’s agreement, and on the legal plan if present) and must match credit report</li>
+	<li>DOB must match Forth and credit report (client must be 18+)<br/>
+<b>Source:</b> Forth / Agreement + credit report<br/>
+<b>Output</b> : Pass or No Pass W/Reason</li>
+</ul>
+
+
+<hr />
+
+<ol>
+	<li><b>Address</b><br/>
+<b>Description:</b> State address must adhere to the assigned company. A reference table exists to determine which state belongs to which services. here’s a full list of states and their matching companies <br/>
+<b>Source:</b> Forth / Client snapshot<br/>
+<b>Output</b> : Pass or No Pass W/Reason</li>
+</ol>
+
+
+<hr />
+
+<ol>
+	<li><b>Draft</b><br/>
+<b>Description:</b></li>
+</ol>
+
+
+<ul>
+	<li>Minimum (Full Monthly) Payment Amount: $250.00</li>
+	<li>First draft cannot be the next day after enrolment; it must be within 2–30 days of enrolment date ( if the affiliate is Credit Care, exception applies 2-45 days)<br/>
+<b>Source:</b> Forth / Contract<br/>
+<b>Output</b> : Pass or No Pass W/Reason</li>
+</ul>
+
+
+
+
+
+            <br/>
+        </td>
+    </tr>
+    </table>
+
+    <br/>
+
+    <table cellpadding="2" cellspacing="0" border="0" width="100%" align="center">
+    <tr>
+        <td bgcolor="#bbbbbb" width="1%" nowrap align="center">
+            &nbsp;<font color="#ffffff"><b>Comments</b></font>&nbsp;
+        </td>
+        <td>&nbsp;</td>
+    </tr>
+    </table>
+
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" class="grid" style="margin: 0;">
+                <tr id="comment-header-21413"><td bgcolor="#f0f0f0">
+            Comment by  
+                                                    
+                
+        
+            <a class="user-hover" rel="712020:06aff4a8-ac97-47c0-b4d2-1150ce46c689"
+                id="word_commented_712020:06aff4a8-ac97-47c0-b4d2-1150ce46c689"
+                href="https://rnd-usclarity.atlassian.net/secure/ViewProfile.jspa?accountId=712020%3A06aff4a8-ac97-47c0-b4d2-1150ce46c689">
+                    Noor Tawalbeh
+                </a>
+
+                                        <font size="-2">
+            [
+                <font color="#336699">12/Jun/25</font>
+
+                            ]
+            </font>
+
+        </td></tr>
+        <tr id="comment-body-21413"><td bgcolor="#ffffff">
+            <p>I will validate the following : -  How to identify VLP enrolment on forth </p>
+        </td></tr>
+            </table>
+Generated at Fri Jun 20 10:32:34 UTC 2025 by Nedal Altiti using Jira 1001.0.0-SNAPSHOT#100284-rev:4f9780d932de14e7c3dec0c9382f8855050fda22.
+
+</body>
+</html>

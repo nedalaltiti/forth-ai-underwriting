@@ -1,0 +1,68 @@
+# Forth AI Underwriting System Configuration
+# Copy this file to configs/.env and update with your actual values
+
+# Application Configuration
+APP_HOST=0.0.0.0
+APP_PORT=8000
+DEBUG=true
+LOG_LEVEL=INFO
+ENVIRONMENT=development
+
+# Security
+SECRET_KEY=your_secret_key_here_change_in_production
+
+# Webhook Configuration
+WEBHOOK_ENDPOINT=/webhook/forth-docs
+WEBHOOK_TIMEOUT=30
+FORTH_WEBHOOK_SECRET=your_webhook_secret_here
+
+# Forth API Configuration (REQUIRED)
+FORTH_API_BASE_URL=https://your-forth-api.com
+FORTH_API_KEY=your_api_key_here
+FORTH_API_TIMEOUT=30
+
+# Gemini AI Configuration (REQUIRED) 
+GOOGLE_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL_NAME=gemini-2.0-flash-001
+GEMINI_TEMPERATURE=0.0
+GEMINI_MAX_OUTPUT_TOKENS=1024
+
+# Google Cloud Configuration
+GOOGLE_CLOUD_PROJECT=your_project_id
+GOOGLE_CLOUD_LOCATION=us-central1
+
+# Database Configuration
+DATABASE_URL=sqlite:///./forth_underwriting.db
+
+# Redis Configuration (Optional for local testing)
+REDIS_URL=redis://localhost:6379/0
+
+# Microsoft Teams Configuration (Required for Teams bot)
+MICROSOFT_APP_ID=your_teams_app_id
+MICROSOFT_APP_PASSWORD=your_teams_app_password
+TENANT_ID=your_tenant_id
+CLIENT_ID=your_client_id  
+CLIENT_SECRET=your_client_secret
+
+# OpenAI Configuration (Optional - fallback provider)
+OPENAI_API_KEY=your_openai_api_key_here
+
+# AWS Configuration (Optional)
+AWS_REGION=us-west-1
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+
+# Feature Flags
+ENABLE_AI_PARSING=true
+ENABLE_CACHING=true
+ENABLE_AUDIT_LOGGING=true
+ENABLE_FEEDBACK_COLLECTION=true
+
+# Performance Configuration
+MAX_FILE_SIZE_MB=50
+DOCUMENT_PROCESSING_TIMEOUT=300
+VALIDATION_TIMEOUT_SECONDS=120
+
+# Rate Limiting
+RATE_LIMIT_ENABLED=false
+RATE_LIMIT_REQUESTS_PER_MINUTE=60 

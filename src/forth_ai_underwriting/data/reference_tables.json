@@ -1,0 +1,67 @@
+{
+  "state_company_mapping": {
+    "AL": "Concordia Legal Advisors",
+    "AK": "Concordia Legal Advisors", 
+    "AZ": "Concordia Legal Advisors",
+    "AR": "Concordia Legal Advisors",
+    "CA": "Faye Caulin",
+    "CO": "Concordia Legal Advisors",
+    "CT": "Concordia Legal Advisors",
+    "DE": "Concordia Legal Advisors",
+    "FL": "Concordia Legal Advisors",
+    "GA": "Concordia Legal Advisors",
+    "HI": "Concordia Legal Advisors",
+    "ID": "Concordia Legal Advisors",
+    "IL": "Concordia Legal Advisors",
+    "IN": "Concordia Legal Advisors",
+    "IA": "Concordia Legal Advisors",
+    "KS": "Concordia Legal Advisors",
+    "KY": "Concordia Legal Advisors",
+    "LA": "Concordia Legal Advisors",
+    "ME": "Concordia Legal Advisors",
+    "MD": "Concordia Legal Advisors",
+    "MA": "Concordia Legal Advisors",
+    "MI": "Concordia Legal Advisors",
+    "MN": "Concordia Legal Advisors",
+    "MS": "Concordia Legal Advisors",
+    "MO": "Concordia Legal Advisors",
+    "MT": "Concordia Legal Advisors",
+    "NE": "Concordia Legal Advisors",
+    "NV": "Concordia Legal Advisors",
+    "NH": "Concordia Legal Advisors",
+    "NJ": "Concordia Legal Advisors",
+    "NM": "Concordia Legal Advisors",
+    "NY": "Concordia Legal Advisors",
+    "NC": "Concordia Legal Advisors",
+    "ND": "Concordia Legal Advisors",
+    "OH": "Concordia Legal Advisors",
+    "OK": "Concordia Legal Advisors",
+    "OR": "Concordia Legal Advisors",
+    "PA": "Concordia Legal Advisors",
+    "RI": "Concordia Legal Advisors",
+    "SC": "Concordia Legal Advisors",
+    "SD": "Concordia Legal Advisors",
+    "TN": "Concordia Legal Advisors",
+    "TX": "Concordia Legal Advisors",
+    "UT": "Concordia Legal Advisors",
+    "VT": "Concordia Legal Advisors",
+    "VA": "Concordia Legal Advisors",
+    "WA": "Concordia Legal Advisors",
+    "WV": "Concordia Legal Advisors",
+    "WI": "Concordia Legal Advisors",
+    "WY": "Concordia Legal Advisors"
+  },
+  "affiliate_exceptions": {
+    "Credit Care": {
+      "draft_days_min": 2,
+      "draft_days_max": 45
+    }
+  },
+  "validation_thresholds": {
+    "minimum_payment": 250.00,
+    "payment_tolerance_less": 100.00,
+    "payment_tolerance_more": 3.00,
+    "minimum_age": 18
+  }
+}
+
