@@ -9,7 +9,7 @@ from typing import Dict, Any, List, Optional, Union
 from dataclasses import dataclass
 from loguru import logger
 
-from forth_ai_underwriting.services.llm_service import get_llm_service, generate_json, generate_text
+from forth_ai_underwriting.services.llm_service import get_llm_service
 from forth_ai_underwriting.config.settings import settings
 from forth_ai_underwriting.core.exceptions import create_ai_parsing_error
 from forth_ai_underwriting.prompts import (
@@ -79,26 +79,32 @@ class GeminiService:
             # Use centralized prompt management
             prompt_data = get_contract_extraction_prompt(document_text=document_text)
             
-            result = await generate_json(
+            result = await self.llm_service.generate_json(
                 prompt=prompt_data["user_prompt"],
-                system_prompt=prompt_data["system_prompt"],
-                format_instructions=prompt_data.get("format_instructions"),
-                temperature=0.1,
-                provider="gemini"
+                system_prompt=prompt_data["system_prompt"]
             )
             
+            if not result.success:
+                logger.error(f"Contract parsing failed: {result.error}")
+                raise create_ai_parsing_error(
+                    document_url=document_url,
+                    provider="gemini",
+                    reason=f"Contract parsing failed: {result.error}"
+                )
+            
             # Convert to ContractData object
+            data = result.data or {}
             return ContractData(
-                sender_ip=result.get("sender_ip"),
-                signer_ip=result.get("signer_ip"),
-                mailing_address=result.get("mailing_address"),
-                signatures=result.get("signatures"),
-                bank_details=result.get("bank_details"),
-                agreement=result.get("agreement"),
-                gateway=result.get("gateway"),
-                legal_plan=result.get("legal_plan"),
-                vlp_section=result.get("vlp_section"),
-                metadata=result.get("document_metadata")
+                sender_ip=data.get("sender_ip"),
+                signer_ip=data.get("signer_ip"),
+                mailing_address=data.get("mailing_address"),
+                signatures=data.get("signatures"),
+                bank_details=data.get("bank_details"),
+                agreement=data.get("agreement"),
+                gateway=data.get("gateway"),
+                legal_plan=data.get("legal_plan"),
+                vlp_section=data.get("vlp_section"),
+                metadata=data.get("document_metadata")
             )
             
         except Exception as e:
@@ -135,21 +141,29 @@ class GeminiService:
                 total_debt=client_context.get("total_debt") if client_context else None
             )
             
-            result = await generate_json(
+            result = await self.llm_service.generate_json(
                 prompt=prompt_data["user_prompt"],
-                system_prompt=prompt_data["system_prompt"],
-                format_instructions=prompt_data.get("format_instructions"),
-                temperature=0.1,
-                provider="gemini"
+                system_prompt=prompt_data["system_prompt"]
             )
             
+            if not result.success:
+                logger.error(f"Hardship assessment failed: {result.error}")
+                return HardshipAssessment(
+                    is_valid=False,
+                    confidence=0.0,
+                    reason=f"Assessment failed: {result.error}",
+                    keywords_found=[],
+                    assessment_details={}
+                )
+            
             # Return legacy format for compatibility
+            data = result.data or {}
             return HardshipAssessment(
-                is_valid=result["assessment_result"]["is_valid"],
-                confidence=result["assessment_result"]["confidence"],
-                reason=result["detailed_reasoning"],
-                keywords_found=result.get("keywords_found", []),
-                assessment_details=result.get("hardship_analysis", {})
+                is_valid=data.get("assessment_result", {}).get("is_valid", False),
+                confidence=data.get("assessment_result", {}).get("confidence", 0.0),
+                reason=data.get("detailed_reasoning", "No reasoning provided"),
+                keywords_found=data.get("keywords_found", []),
+                assessment_details=data.get("hardship_analysis", {})
             )
             
         except Exception as e:
@@ -175,15 +189,16 @@ class GeminiService:
                 credit_score=budget_info.get("credit_score")
             )
             
-            result = await generate_json(
+            result = await self.llm_service.generate_json(
                 prompt=prompt_data["user_prompt"],
-                system_prompt=prompt_data["system_prompt"],
-                format_instructions=prompt_data.get("format_instructions"),
-                temperature=0.1,
-                provider="gemini"
+                system_prompt=prompt_data["system_prompt"]
             )
             
-            return result
+            if not result.success:
+                logger.error(f"Budget analysis failed: {result.error}")
+                return {"error": f"Analysis failed: {result.error}"}
+            
+            return result.data or {}
             
         except Exception as e:
             logger.error(f"Budget analysis failed: {e}")
@@ -206,15 +221,16 @@ class GeminiService:
                 program_type="standard"
             )
             
-            result = await generate_json(
+            result = await self.llm_service.generate_json(
                 prompt=prompt_data["user_prompt"],
-                system_prompt=prompt_data["system_prompt"],
-                format_instructions=prompt_data.get("format_instructions"),
-                temperature=0.1,
-                provider="gemini"
+                system_prompt=prompt_data["system_prompt"]
             )
             
-            return result
+            if not result.success:
+                logger.error(f"Debt validation failed: {result.error}")
+                return {"error": f"Validation failed: {result.error}"}
+            
+            return result.data or {}
             
         except Exception as e:
             logger.error(f"Debt validation failed: {e}")
@@ -227,16 +243,12 @@ class GeminiService:
     async def health_check(self) -> Dict[str, Any]:
         """Check the health of the Gemini service."""
         try:
-            test_response = await generate_text(
-                prompt="Respond with 'OK' if you can process this request.",
-                provider="gemini"
-            )
+            test_response = await self.llm_service.test_connection()
             
             return {
-                "status": "healthy",
+                "status": "healthy" if test_response else "unhealthy",
                 "model": self.model_name,
-                "test_response": test_response[:100],
-                "provider_health": self.llm_service.health_check()
+                "llm_service": "connected" if test_response else "disconnected"
             }
             
         except Exception as e:
