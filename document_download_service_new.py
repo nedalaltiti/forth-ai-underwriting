@@ -23,6 +23,7 @@ from src.forth_ai_underwriting.infrastructure.queue import (
     create_queue_adapter,
 )
 from src.forth_ai_underwriting.services.s3_service import S3Service, get_s3_service
+from src.forth_ai_underwriting.utils.environment import get_env_var, get_env_var_bool
 
 
 class DownloadTask(BaseModel):
@@ -122,19 +123,34 @@ class DocumentDownloadService:
         logger.info("🚀 Starting Document Download Service")
 
         try:
+            # Get queue configuration from environment
+            queue_name = get_env_var("QUEUE_NAME", "uw-contracts-parser-dev-sqs")
+            use_local_queue = get_env_var_bool("USE_LOCAL_QUEUE", False)
+
             # Initialize services
             self.queue_adapter = create_queue_adapter(
-                queue_name=settings.aws.sqs.main_queue,
-                use_local=settings.aws.sqs.use_local_queue,
+                queue_name=queue_name,
+                use_local=use_local_queue,
                 region=settings.aws.region,
             )
 
             self.s3_service = get_s3_service()
 
+            # Get Forth API config with fallbacks
+            forth_api_base_url = settings.forth_api.base_url or get_env_var(
+                "FORTH_API_BASE_URL", ""
+            )
+            forth_api_key = settings.forth_api.api_key or get_env_var(
+                "FORTH_API_KEY", ""
+            )
+            forth_api_key_id = getattr(
+                settings.forth_api, "api_key_id", None
+            ) or get_env_var("FORTH_API_KEY_ID", None)
+
             self.forth_client = ForthAPIClient(
-                base_url=settings.forth_api.base_url,
-                api_key=settings.forth_api.api_key,
-                api_key_id=settings.forth_api.api_key_id,
+                base_url=forth_api_base_url,
+                api_key=forth_api_key,
+                api_key_id=forth_api_key_id,
                 timeout=settings.forth_api.timeout,
             )
 

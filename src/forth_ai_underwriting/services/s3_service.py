@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from forth_ai_underwriting.config.settings import settings
+from forth_ai_underwriting.utils.environment import get_env_var
 from loguru import logger
 
 
@@ -165,19 +166,34 @@ class S3Service:
         self.use_local_mode = False
         self.local_backend = None
         self.s3_client = None
-        self.bucket_name = settings.aws.s3_bucket_name or "forth-underwriting-documents"
+
+        # Get S3 configuration from environment variables
+        self.bucket_name = get_env_var(
+            "AWS_S3_BUCKET_NAME", "forth-underwriting-documents"
+        )
+        self.aws_access_key_id = get_env_var("AWS_ACCESS_KEY_ID")
+        self.aws_secret_access_key = get_env_var("AWS_SECRET_ACCESS_KEY")
 
         try:
             # Try to initialize AWS S3
             import boto3
             from botocore.exceptions import ClientError, NoCredentialsError
 
-            self.s3_client = boto3.client(
-                "s3",
-                region_name=settings.aws.region,
-                aws_access_key_id=settings.aws.access_key_id,
-                aws_secret_access_key=settings.aws.secret_access_key,
-            )
+            # Build S3 client configuration
+            s3_config = {
+                "region_name": settings.aws.region,
+            }
+
+            # Only add credentials if they're available
+            if self.aws_access_key_id and self.aws_secret_access_key:
+                s3_config.update(
+                    {
+                        "aws_access_key_id": self.aws_access_key_id,
+                        "aws_secret_access_key": self.aws_secret_access_key,
+                    }
+                )
+
+            self.s3_client = boto3.client("s3", **s3_config)
 
             # Test AWS credentials
             try:

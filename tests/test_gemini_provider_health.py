@@ -1,21 +1,20 @@
-from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from forth_ai_underwriting.services.gemini_service import GeminiProvider
+from forth_ai_underwriting.services.gemini_service import GeminiService
 
 
 @pytest.fixture
-def gemini_provider() -> GeminiProvider:
+def gemini_provider() -> GeminiService:
     """Create a mock Gemini provider for testing."""
-    with patch("forth_ai_underwriting.services.gemini_service.genai") as mock_genai:
-        provider = GeminiProvider()
+    with patch("forth_ai_underwriting.services.gemini_service.genai"):
+        provider = GeminiService()
         provider.model = AsyncMock()
         return provider
 
 
 @pytest.mark.asyncio
-async def test_health_check_success(gemini_provider: GeminiProvider) -> None:
+async def test_health_check_success(gemini_provider: GeminiService) -> None:
     """Test successful health check."""
     # Mock a successful generation
     mock_response = AsyncMock()
@@ -29,8 +28,8 @@ async def test_health_check_success(gemini_provider: GeminiProvider) -> None:
     assert "response_time_ms" in result
 
 
-@pytest.mark.asyncio  
-async def test_health_check_exception_handling(gemini_provider: GeminiProvider) -> None:
+@pytest.mark.asyncio
+async def test_health_check_exception_handling(gemini_provider: GeminiService) -> None:
     """Test health check with exception handling."""
     # Mock an exception during generation
     gemini_provider.model.generate_content_async.side_effect = Exception("API Error")
@@ -39,4 +38,4 @@ async def test_health_check_exception_handling(gemini_provider: GeminiProvider) 
 
     # Check the nested structure for initialization status
     assert result["checks"]["initialization"]["status"] == "unhealthy"
-    assert "error" in result["checks"]["initialization"] 
+    assert "error" in result["checks"]["initialization"]

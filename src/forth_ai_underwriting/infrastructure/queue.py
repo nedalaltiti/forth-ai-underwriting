@@ -35,29 +35,22 @@ class QueueAdapter(ABC):
 
     def _get_dlq_name(self, queue_name: str) -> str:
         """Get DLQ name from configuration or generate based on queue name."""
-        # Try to match with configured queues
-        sqs_config = settings.aws.sqs
-
-        if queue_name == sqs_config.main_queue:
-            return sqs_config.dead_letter_queue
-        elif queue_name == sqs_config.validation_queue:
-            return f"{sqs_config.validation_queue}-dl"
-        elif queue_name == sqs_config.notification_queue:
-            return f"{sqs_config.notification_queue}-dl"
+        # Use a simple naming pattern to generate DLQ name
+        if queue_name.endswith("-dev-sqs"):
+            base_name = queue_name.replace("-dev-sqs", "")
+            return f"{base_name}-dl-dev-sqs"
+        elif queue_name.endswith("-prod-sqs"):
+            base_name = queue_name.replace("-prod-sqs", "")
+            return f"{base_name}-dl-prod-sqs"
+        elif queue_name.endswith("-staging-sqs"):
+            base_name = queue_name.replace("-staging-sqs", "")
+            return f"{base_name}-dl-staging-sqs"
+        elif queue_name.endswith("-sqs"):
+            base_name = queue_name.replace("-sqs", "")
+            return f"{base_name}-dl-sqs"
         else:
-            # Fallback: generate DLQ name based on queue name
-            if queue_name.endswith("-dev-sqs"):
-                base_name = queue_name.replace("-dev-sqs", "")
-                return f"{base_name}-dl-dev-sqs"
-            elif queue_name.endswith("-prod-sqs"):
-                base_name = queue_name.replace("-prod-sqs", "")
-                return f"{base_name}-dl-prod-sqs"
-            elif queue_name.endswith("-staging-sqs"):
-                base_name = queue_name.replace("-staging-sqs", "")
-                return f"{base_name}-dl-staging-sqs"
-            else:
-                # Generic fallback
-                return f"{queue_name}-dlq"
+            # Generic fallback
+            return f"{queue_name}-dlq"
 
     @abstractmethod
     async def send_message(self, message: QueueMessage) -> str:

@@ -10,7 +10,7 @@ from functools import wraps
 from typing import Any
 
 try:
-    from opentelemetry import metrics, trace
+    from opentelemetry import trace
     from opentelemetry.exporter.jaeger.thrift import JaegerExporter
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
     from opentelemetry.instrumentation.boto3sqs import Boto3SQSInstrumentor
@@ -97,11 +97,33 @@ class CustomMetrics:
 
         self.registry = registry or CollectorRegistry()
 
-        # Webhook metrics
+        # General operation metrics (for error handling decorators)
+        self.operation_success_total = Counter(
+            "operation_success_total",
+            "Total number of successful operations",
+            ["operation", "component"],
+            registry=self.registry,
+        )
+
+        self.operation_error_total = Counter(
+            "operation_error_total",
+            "Total number of failed operations",
+            ["operation", "component", "error_type"],
+            registry=self.registry,
+        )
+
+        # Webhook metrics (updated to match usage)
         self.webhook_requests_total = Counter(
             "webhook_requests_total",
             "Total number of webhook requests",
-            ["method", "endpoint", "status"],
+            ["status", "doc_type"],  # Match actual usage
+            registry=self.registry,
+        )
+
+        self.webhook_errors_total = Counter(
+            "webhook_errors_total",
+            "Total number of webhook errors",
+            ["error_type"],
             registry=self.registry,
         )
 
@@ -252,33 +274,45 @@ class ObservabilityManager:
             trace.set_tracer_provider(TracerProvider(resource=resource))
             tracer_provider = trace.get_tracer_provider()
 
-            # Setup exporters
+            # Configure exporters based on environment
             exporters = []
 
-            # Console exporter for development
-            if self.config.trace_console_export:
+            # Console exporter for development (disabled by default for cleaner logs)
+            if (
+                self.config.environment == "development"
+                and os.getenv("ENABLE_CONSOLE_TRACING", "false").lower() == "true"
+            ):
                 exporters.append(ConsoleSpanExporter())
 
             # Jaeger exporter
-            try:
-                jaeger_exporter = JaegerExporter(
-                    endpoint=self.config.jaeger_endpoint,
-                    collector_endpoint=self.config.jaeger_endpoint,
-                )
-                exporters.append(jaeger_exporter)
-                logger.info(
-                    f"✅ Jaeger tracing configured: {self.config.jaeger_endpoint}"
-                )
-            except Exception as e:
-                logger.warning(f"Failed to setup Jaeger exporter: {e}")
+            if os.getenv("ENABLE_JAEGER_TRACING", "true").lower() == "true":
+                try:
+                    jaeger_exporter = JaegerExporter(
+                        collector_endpoint=self.config.jaeger_endpoint,
+                    )
+                    exporters.append(jaeger_exporter)
+                    logger.info(
+                        f"✅ Jaeger tracing configured: {self.config.jaeger_endpoint}"
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to setup Jaeger exporter: {e}")
+            else:
+                logger.info("🔇 Jaeger tracing disabled via ENABLE_JAEGER_TRACING=false")
 
             # OTLP exporter
-            try:
-                otlp_exporter = OTLPSpanExporter(endpoint=self.config.otlp_endpoint)
-                exporters.append(otlp_exporter)
-                logger.info(f"✅ OTLP tracing configured: {self.config.otlp_endpoint}")
-            except Exception as e:
-                logger.warning(f"Failed to setup OTLP exporter: {e}")
+            if os.getenv("ENABLE_OTLP_TRACING", "true").lower() == "true":
+                try:
+                    otlp_exporter = OTLPSpanExporter(
+                        endpoint=self.config.otlp_endpoint, insecure=True
+                    )
+                    exporters.append(otlp_exporter)
+                    logger.info(
+                        f"✅ OTLP tracing configured: {self.config.otlp_endpoint}"
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to setup OTLP exporter: {e}")
+            else:
+                logger.info("🔇 OTLP tracing disabled via ENABLE_OTLP_TRACING=false")
 
             # Add span processors
             for exporter in exporters:
@@ -289,10 +323,25 @@ class ObservabilityManager:
             self.tracer = trace.get_tracer(__name__)
 
             # Auto-instrument libraries
-            FastAPIInstrumentor.instrument()
-            HTTPXClientInstrumentor.instrument()
-            Boto3SQSInstrumentor.instrument()
-            SQLAlchemyInstrumentor.instrument()
+            try:
+                FastAPIInstrumentor().instrument()
+            except Exception as e:
+                logger.warning(f"Failed to instrument FastAPI: {e}")
+
+            try:
+                HTTPXClientInstrumentor().instrument()
+            except Exception as e:
+                logger.warning(f"Failed to instrument HTTPX: {e}")
+
+            try:
+                Boto3SQSInstrumentor().instrument()
+            except Exception as e:
+                logger.warning(f"Failed to instrument Boto3 SQS: {e}")
+
+            try:
+                SQLAlchemyInstrumentor().instrument()
+            except Exception as e:
+                logger.warning(f"Failed to instrument SQLAlchemy: {e}")
 
             logger.info("✅ OpenTelemetry tracing setup complete")
         except Exception as e:
@@ -361,17 +410,57 @@ class ObservabilityManager:
         if not self._initialized:
             self.initialize()
 
-        if self.instrumentator:
+        # Add Prometheus metrics endpoint directly
+        if self.custom_metrics:
             try:
-                self.instrumentator.instrument(app)
-                self.instrumentator.expose(
-                    app, endpoint=self.config.prometheus_endpoint
-                )
+                from fastapi import Response
+                from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
+                @app.get(self.config.prometheus_endpoint)
+                async def metrics_endpoint():
+                    """Prometheus metrics endpoint."""
+                    try:
+                        registry = (
+                            self.custom_metrics.registry
+                            if self.custom_metrics
+                            else None
+                        )
+                        metrics_data = generate_latest(registry)
+                        return Response(
+                            content=metrics_data, media_type=CONTENT_TYPE_LATEST
+                        )
+                    except Exception as e:
+                        logger.error(f"Error generating metrics: {e}")
+                        return Response(
+                            content="# Error generating metrics\n",
+                            media_type=CONTENT_TYPE_LATEST,
+                        )
+
                 logger.info(
-                    f"✅ FastAPI instrumented with metrics endpoint: {self.config.prometheus_endpoint}"
+                    f"✅ Direct metrics endpoint added at: {self.config.prometheus_endpoint}"
                 )
             except Exception as e:
-                logger.warning(f"Failed to instrument app: {e}")
+                logger.error(f"❌ Failed to add direct metrics endpoint: {e}")
+
+        # Try FastAPI instrumentator for automatic HTTP metrics
+        if self.instrumentator:
+            try:
+                logger.info("🔧 Instrumenting FastAPI app with HTTP metrics...")
+                self.instrumentator.instrument(app)
+                logger.info("✅ FastAPI HTTP metrics instrumented")
+            except Exception as e:
+                logger.warning(f"Failed to instrument HTTP metrics: {e}")
+
+        # Log available routes
+        routes = []
+        for route in app.routes:
+            if hasattr(route, "path"):
+                routes.append(route.path)
+        logger.info(f"🔧 Available routes after instrumentation: {routes}")
+
+        logger.info(
+            f"✅ FastAPI instrumented with metrics endpoint: {self.config.prometheus_endpoint}"
+        )
 
     def get_tracer(self, name: str = None):
         """Get OpenTelemetry tracer."""
@@ -576,7 +665,9 @@ def observe_histogram(name: str, value: float, labels: dict[str, str] = None) ->
 
 
 # Initialize observability on module import if enabled
-if os.getenv("AUTO_INIT_OBSERVABILITY", "true").lower() == "true":
+if (
+    os.getenv("AUTO_INIT_OBSERVABILITY", "false").lower() == "true"
+):  # Changed default to false
     try:
         observability.initialize()
     except Exception as e:

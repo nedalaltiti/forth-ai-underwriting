@@ -28,18 +28,17 @@ import os
 import sys
 from pathlib import Path
 
+import uvicorn
+from loguru import logger
+
 # Add src to Python path for imports
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root / "src"))
 
-import uvicorn
 from forth_ai_underwriting.core.error_handling import handle_expected_errors
 from forth_ai_underwriting.core.observability import observability
 from forth_ai_underwriting.webhooks.api import create_standalone_app
-
-# Import our clean modular components
 from forth_ai_underwriting.webhooks.config import WebhookConfig
-from loguru import logger
 
 
 @handle_expected_errors("service_startup", "webhook_service")
@@ -130,6 +129,8 @@ def create_application(config: WebhookConfig):
 
     # Initialize observability if enabled
     if config.enable_metrics:
+        # Explicitly initialize observability first
+        observability.initialize()
         observability.instrument_app(app)
         logger.info("✅ Observability instrumentation enabled")
 
