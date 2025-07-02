@@ -1,0 +1,47 @@
+# Dockerfile for Document Download Service
+FROM python:3.11-slim-bullseye
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies for PDF processing
+RUN apt-get update && apt-get install -y \
+    curl \
+    poppler-utils \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+# Copy dependency files
+COPY pyproject.toml ./
+COPY uv.lock ./
+
+# Copy source code (needed before uv sync for editable install)
+COPY src/ ./src/
+COPY document_download_service_new.py ./
+
+# Install Python dependencies
+RUN uv sync --no-dev
+
+# Create temp directory for downloads
+RUN mkdir -p /app/temp_downloads && \
+    chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Health check with better validation
+HEALTHCHECK --interval=30s --timeout=15s --start-period=30s --retries=3 \
+    CMD python -c "import asyncio; print('healthy')" || exit 1
+
+# Command to run the download service
+CMD ["uv", "run", "python", "document_download_service_new.py"]

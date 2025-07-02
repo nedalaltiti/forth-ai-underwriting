@@ -144,6 +144,12 @@ venv.bak/
 # Keep example file
 !.env.example
 
+# Docker environment files with credentials
+.env.docker
+configs/docker-production.env
+configs/docker-*.env
+!configs/*.env.example
+
 # Spyder project settings
 .spyderproject
 .spyproject

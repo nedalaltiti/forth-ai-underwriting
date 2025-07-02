@@ -1,0 +1,124 @@
+services:
+  # Webhook Service - Receives webhooks and queues messages
+  webhook-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.webhook
+    container_name: forth-webhook-service
+    env_file:
+      - configs/docker-production.env
+    ports:
+      - "8000:8000"  # Webhook endpoint
+    environment:
+      # Server Configuration
+      - WEBHOOK_HOST=0.0.0.0
+      - WEBHOOK_PORT=8000
+      - WEBHOOK_LOG_LEVEL=INFO
+
+      # Queue Configuration
+      - QUEUE_NAME=uw-contracts-parser-dev-sqs
+      - AWS_REGION=us-west-1
+      - USE_LOCAL_QUEUE=false
+
+      # Forth API Configuration
+      - FORTH_API_BASE_URL=https://api.forthcrm.com/v1
+      - FORTH_API_KEY=b1ac25ce-dae0-1683-f64b-26d30eaf1e5a
+      - FORTH_API_KEY_ID=10111
+
+      # Feature Flags
+      - ENABLE_DOCUMENT_ENHANCEMENT=true
+      - ENABLE_METRICS=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/webhook/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - forth-network
+    # Resource limits for production
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Document Download Service - Processes queue messages and downloads PDFs
+  download-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.download
+    container_name: forth-download-service
+    env_file:
+      - configs/docker-production.env
+    environment:
+      # Service Configuration
+      - MAX_CONCURRENT_DOWNLOADS=3
+      - POLL_INTERVAL_SECONDS=5
+      - LOG_LEVEL=INFO
+
+      # Queue Configuration
+      - QUEUE_NAME=uw-contracts-parser-dev-sqs
+      - AWS_REGION=us-west-1
+      - USE_LOCAL_QUEUE=false
+
+      # Forth API Configuration
+      - FORTH_API_BASE_URL=https://api.forthcrm.com/v1
+      - FORTH_API_KEY=b1ac25ce-dae0-1683-f64b-26d30eaf1e5a
+      - FORTH_API_KEY_ID=10111
+
+      # S3 Configuration
+      - AWS_S3_BUCKET_NAME=contact-contracts-dev-s3-us-west-1
+
+      # Environment
+      - ENVIRONMENT=production
+    healthcheck:
+      test: ["CMD", "python", "-c", "import asyncio; print('healthy')"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - forth-network
+    # NO depends_on - services are truly independent via SQS
+    volumes:
+      - download-temp:/app/temp_downloads
+    # Resource limits for production
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  forth-network:
+    driver: bridge
+    # Network isolation
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Persistent volumes
+volumes:
+  download-temp:
+    driver: local

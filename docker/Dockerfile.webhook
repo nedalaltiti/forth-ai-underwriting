@@ -1,0 +1,48 @@
+# Dockerfile for Webhook Service
+FROM python:3.11-slim-bullseye
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+# Copy dependency files
+COPY pyproject.toml ./
+COPY uv.lock ./
+
+# Copy source code (needed before uv sync for editable install)
+COPY src/ ./src/
+COPY webhook_service.py ./
+
+# Install Python dependencies
+RUN uv sync --no-dev
+
+# Change ownership to non-root user
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Expose port
+EXPOSE 8000
+
+# Health check with proper endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD curl -f http://localhost:8000/webhook/health || exit 1
+
+# Command to run the webhook service
+CMD ["uv", "run", "python", "webhook_service.py"]
