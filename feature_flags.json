@@ -1,0 +1,365 @@
+{
+    "flags": {
+        "ai_parsing_enabled": {
+            "description": "Enable AI-powered document parsing using Gemini",
+            "type": "boolean",
+            "default_value": true,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 100.0,
+            "tags": [
+                "ai",
+                "parsing",
+                "core",
+                "gemini"
+            ]
+        },
+        "experimental_gemini_parser": {
+            "description": "Use experimental Gemini 2.0 Flash parser for enhanced contract analysis",
+            "type": "boolean",
+            "default_value": false,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging"
+            ],
+            "rollout_percentage": 25.0,
+            "tags": [
+                "experimental",
+                "gemini",
+                "parser",
+                "contract"
+            ]
+        },
+        "enhanced_validation": {
+            "description": "Enable enhanced validation checks with ML-powered confidence scoring",
+            "type": "boolean",
+            "default_value": false,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 50.0,
+            "tags": [
+                "validation",
+                "enhancement",
+                "ml",
+                "confidence"
+            ]
+        },
+        "dlq_enabled": {
+            "description": "Enable Dead Letter Queue for failed message processing",
+            "type": "boolean",
+            "default_value": true,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 100.0,
+            "tags": [
+                "infrastructure",
+                "dlq",
+                "reliability"
+            ]
+        },
+        "retry_logic_enabled": {
+            "description": "Enable automatic retry logic with exponential backoff",
+            "type": "boolean",
+            "default_value": true,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 100.0,
+            "tags": [
+                "infrastructure",
+                "retry",
+                "reliability"
+            ]
+        },
+        "idempotency_enabled": {
+            "description": "Enable idempotent message processing to prevent duplicates",
+            "type": "boolean",
+            "default_value": true,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 100.0,
+            "tags": [
+                "infrastructure",
+                "idempotency",
+                "reliability"
+            ]
+        },
+        "schema_versioning_enabled": {
+            "description": "Enable message schema versioning for backward compatibility",
+            "type": "boolean",
+            "default_value": true,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 100.0,
+            "tags": [
+                "infrastructure",
+                "schema",
+                "versioning",
+                "compatibility"
+            ]
+        },
+        "retry_max_attempts": {
+            "description": "Maximum number of retry attempts for failed operations",
+            "type": "number",
+            "default_value": 3,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 100.0,
+            "tags": [
+                "retry",
+                "configuration",
+                "reliability"
+            ]
+        },
+        "llm_provider": {
+            "description": "Primary LLM provider to use for AI operations",
+            "type": "string",
+            "default_value": "gemini",
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 100.0,
+            "tags": [
+                "llm",
+                "provider",
+                "ai"
+            ]
+        },
+        "fallback_llm_provider": {
+            "description": "Fallback LLM provider when primary fails",
+            "type": "string",
+            "default_value": "openai",
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 50.0,
+            "tags": [
+                "llm",
+                "fallback",
+                "reliability"
+            ]
+        },
+        "document_enhancement_enabled": {
+            "description": "Enable document enhancement via Forth API integration",
+            "type": "boolean",
+            "default_value": true,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 100.0,
+            "tags": [
+                "document",
+                "enhancement",
+                "forth-api"
+            ]
+        },
+        "advanced_hardship_analysis": {
+            "description": "Enable advanced hardship analysis with sentiment and context understanding",
+            "type": "boolean",
+            "default_value": false,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging"
+            ],
+            "rollout_percentage": 30.0,
+            "tags": [
+                "experimental",
+                "hardship",
+                "analysis",
+                "sentiment"
+            ]
+        },
+        "real_time_validation": {
+            "description": "Enable real-time validation during document upload",
+            "type": "boolean",
+            "default_value": false,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging"
+            ],
+            "rollout_percentage": 20.0,
+            "tags": [
+                "experimental",
+                "real-time",
+                "validation"
+            ]
+        },
+        "batch_processing_enabled": {
+            "description": "Enable batch processing for multiple documents",
+            "type": "boolean",
+            "default_value": false,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 75.0,
+            "tags": [
+                "batch",
+                "processing",
+                "performance"
+            ]
+        },
+        "observability_enhanced": {
+            "description": "Enable enhanced observability with detailed tracing and metrics",
+            "type": "boolean",
+            "default_value": true,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 100.0,
+            "tags": [
+                "observability",
+                "tracing",
+                "metrics"
+            ]
+        },
+        "a_b_test_validation_engine": {
+            "description": "A/B test new validation engine against current implementation",
+            "type": "boolean",
+            "default_value": false,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging"
+            ],
+            "rollout_percentage": 10.0,
+            "tags": [
+                "experimental",
+                "a-b-test",
+                "validation",
+                "engine"
+            ]
+        },
+        "cache_validation_results": {
+            "description": "Enable caching of validation results for improved performance",
+            "type": "boolean",
+            "default_value": true,
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 100.0,
+            "tags": [
+                "cache",
+                "validation",
+                "performance"
+            ]
+        },
+        "webhook_rate_limiting": {
+            "description": "Enable rate limiting for webhook endpoints",
+            "type": "boolean",
+            "default_value": true,
+            "enabled": true,
+            "environments": [
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 100.0,
+            "tags": [
+                "webhook",
+                "rate-limiting",
+                "security"
+            ]
+        },
+        "audit_logging_enhanced": {
+            "description": "Enable enhanced audit logging with detailed user actions",
+            "type": "boolean",
+            "default_value": true,
+            "enabled": true,
+            "environments": [
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 100.0,
+            "tags": [
+                "audit",
+                "logging",
+                "security",
+                "compliance"
+            ]
+        },
+        "ml_model_version": {
+            "description": "Version of ML models to use for analysis",
+            "type": "string",
+            "default_value": "v2.1",
+            "enabled": true,
+            "environments": [
+                "development",
+                "staging",
+                "production"
+            ],
+            "rollout_percentage": 100.0,
+            "tags": [
+                "ml",
+                "model",
+                "version"
+            ]
+        }
+    },
+    "metadata": {
+        "version": "1.0",
+        "created_at": "2025-01-27T00:00:00Z",
+        "description": "Feature flags for Forth AI Underwriting System - 2025 MLOps Best Practices",
+        "environments": [
+            "development",
+            "staging",
+            "production"
+        ],
+        "tags_description": {
+            "ai": "Artificial Intelligence features",
+            "experimental": "Experimental features under testing",
+            "infrastructure": "Core infrastructure features",
+            "reliability": "Features that improve system reliability",
+            "performance": "Performance optimization features",
+            "security": "Security and compliance features",
+            "ml": "Machine Learning related features",
+            "a-b-test": "Features under A/B testing"
+        }
+    }
+}

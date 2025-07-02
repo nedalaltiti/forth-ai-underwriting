@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # API Gateway (optional - for future implementation)
+  # api-gateway:
+  #   image: nginx:alpine
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf
+  #   depends_on:
+  #     - webhook-service
+  #     - validation-service
+
+  # Webhook Service - Handles webhook ingestion
+  webhook-service:
+    build:
+      context: ./webhook-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - WEBHOOK_QUEUE_NAME=uw-contracts-parser-dev-sqs
+      - WEBHOOK_AWS_REGION=us-west-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - FORTH_API_BASE_URL=${FORTH_API_BASE_URL}
+      - FORTH_API_KEY=${FORTH_API_KEY}
+      - WEBHOOK_LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - microservices-network
+
+  # Document Service - Handles document processing
+  document-service:
+    build:
+      context: ./document-service
+      dockerfile: Dockerfile
+    environment:
+      - DOCUMENT_QUEUE_NAME=uw-contracts-parser-dev-sqs
+      - DOCUMENT_AWS_REGION=us-west-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}
+      - FORTH_API_BASE_URL=${FORTH_API_BASE_URL}
+      - FORTH_API_KEY=${FORTH_API_KEY}
+      - DOCUMENT_MAX_CONCURRENT_DOWNLOADS=3
+      - DOCUMENT_POLL_INTERVAL_SECONDS=5
+      - DOCUMENT_LOG_LEVEL=INFO
+    volumes:
+      - document-temp:/app/temp_downloads
+    healthcheck:
+      test: ["CMD", "python", "-c", "import psutil; exit(0 if any('main.py' in str(p.cmdline()) for p in psutil.process_iter()) else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - microservices-network
+
+  # Validation Service - Handles AI-powered validation
+  validation-service:
+    build:
+      context: ./validation-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - VALIDATION_GEMINI_API_KEY=${GEMINI_API_KEY}
+      - VALIDATION_FORTH_API_BASE_URL=${FORTH_API_BASE_URL}
+      - VALIDATION_FORTH_API_KEY=${FORTH_API_KEY}
+      - VALIDATION_LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - microservices-network
+
+networks:
+  microservices-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  document-temp:
+    driver: local
